@@ -16,7 +16,17 @@ const sized = photoFiles.map((name) => {
 	};
 });
 
-const gallery = sized;
+// Shuffle (Fisher-Yates) so the gallery layout is different on every page load.
+function shuffle<T>(arr: T[]): T[] {
+	const out = [...arr];
+	for (let i = out.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[out[i], out[j]] = [out[j], out[i]];
+	}
+	return out;
+}
+
+const gallery = shuffle(sized);
 const slideshow = sized.filter((p) => p.landscape).map((p) => p.src);
 
 // Group into rows: a landscape photo takes the space of two portraits,
@@ -45,38 +55,102 @@ if (row.length) rows.push({ items: row, cols: used });
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
 		<title>Photo Gallery</title>
 	</head>
 	<body>
 		<header class="site-header">
-			<span class="logo">PHOTOS</span>
+			<span class="logo">Ndivmxm</span>
+			<span class="center-tagline">Droplets of light, suspended in time</span>
 		</header>
 
 		<main>
-			<section class="hero">
-				<h1>Photo Gallery</h1>
-				<p>A collection of moments, captured one frame at a time.</p>
-			</section>
-
 			<section class="camera-section" aria-label="Featured slideshow">
 				<div class="camera">
-					<img class="camera-outline" src="/camera-outline.png" alt="" />
-					<div class="camera-screen">
+					<img class="camera-outline" src="/camera-outline.png" alt="" draggable="false" oncontextmenu="return false" ondragstart="return false" />
+					<div class="camera-screen" id="camera-screen" oncontextmenu="return false">
 						{slideshow.map((src, i) => (
-							<img
-								class="slide"
-								src={src}
-								alt=""
-								loading={i === 0 ? "eager" : "lazy"}
-								style={`--i: ${i}; --n: ${slideshow.length}`}
-							/>
+							<div class="slide" data-index={i}>
+								<img src={src} alt="" loading={i === 0 ? "eager" : "lazy"} draggable="false" oncontextmenu="return false" ondragstart="return false" />
+								<span class="af-grid">
+									{Array.from({ length: 9 }).map(() => <span class="af-cell"></span>)}
+								</span>
+							</div>
 						))}
 					</div>
 				</div>
 			</section>
 
 			<section class="gallery">
-				<h2>Gallery</h2>
+				<div class="filter-bar" role="tablist" aria-label="Filter photos by tag">
+					<button class="filter-btn active" data-tag="all" aria-label="filter by: all">
+						<span class="tooltip">filter by: all</span>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<rect x="3" y="3" width="8" height="8" rx="1.5" />
+							<rect x="13" y="3" width="8" height="8" rx="1.5" />
+							<rect x="3" y="13" width="8" height="8" rx="1.5" />
+							<rect x="13" y="13" width="8" height="8" rx="1.5" />
+						</svg>
+					</button>
+					<button class="filter-btn" data-tag="humans" aria-label="filter by: humans">
+						<span class="tooltip">filter by: humans</span>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+							<circle cx="12" cy="5" r="2.4" />
+							<line x1="12" y1="8" x2="12" y2="15" />
+							<line x1="12" y1="10.5" x2="7.5" y2="14" />
+							<line x1="12" y1="10.5" x2="16.5" y2="14" />
+							<line x1="12" y1="15" x2="8.5" y2="21" />
+							<line x1="12" y1="15" x2="15.5" y2="21" />
+						</svg>
+					</button>
+					<button class="filter-btn" data-tag="graffiti" aria-label="filter by: graffiti">
+						<span class="tooltip">filter by: graffiti</span>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<rect x="8" y="7" width="8" height="14" rx="2" />
+							<path d="M10 7V5a2 2 0 0 1 2-2 2 2 0 0 1 2 2v2" />
+							<line x1="8" y1="11" x2="16" y2="11" />
+							<line x1="5" y1="14" x2="3" y2="13" />
+							<line x1="5" y1="17" x2="3" y2="17.5" />
+						</svg>
+					</button>
+					<button class="filter-btn" data-tag="nature" aria-label="filter by: nature">
+						<span class="tooltip">filter by: nature</span>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M12 3 6 11h3l-4 6h5v4h4v-4h5l-4-6h3z" />
+						</svg>
+					</button>
+					<button class="filter-btn" data-tag="animals" aria-label="filter by: animals">
+						<span class="tooltip">filter by: animals</span>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M5 9c0-2 1-4 2-5 0 1.5.5 2.5 1 3" />
+							<path d="M19 9c0-2-1-4-2-5 0 1.5-.5 2.5-1 3" />
+							<circle cx="12" cy="13" r="6" />
+							<circle cx="9.5" cy="12" r="0.6" fill="currentColor" />
+							<circle cx="14.5" cy="12" r="0.6" fill="currentColor" />
+							<path d="M11 15c.5.5 1.5.5 2 0" />
+							<path d="M9 15.5 7 17M15 15.5l2 1.5" />
+						</svg>
+					</button>
+					<button class="filter-btn" data-tag="objects" aria-label="filter by: objects">
+						<span class="tooltip">filter by: objects</span>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+							<path d="M12 3 19 12 12 21 5 12Z" />
+						</svg>
+					</button>
+					<button class="filter-btn" data-tag="random" aria-label="filter by: random">
+						<span class="tooltip">filter by: random</span>
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+							<rect x="4" y="4" width="16" height="16" rx="3" />
+							<circle cx="8.5" cy="8.5" r="1.1" fill="currentColor" stroke="none" />
+							<circle cx="15.5" cy="8.5" r="1.1" fill="currentColor" stroke="none" />
+							<circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+							<circle cx="8.5" cy="15.5" r="1.1" fill="currentColor" stroke="none" />
+							<circle cx="15.5" cy="15.5" r="1.1" fill="currentColor" stroke="none" />
+						</svg>
+					</button>
+				</div>
 				{rows.map((r) => (
 					<div class="grid-row" style={`--cols: ${r.cols}`}>
 						{r.items.map((photo) => (
@@ -84,7 +158,7 @@ if (row.length) rows.push({ items: row, cols: used });
 								class:list={["grid-item", photo.landscape ? "landscape" : "portrait"]}
 								data-full={photo.src}
 							>
-								<img src={photo.src} alt="" loading="lazy" />
+								<img src={photo.src} alt="" loading="lazy" draggable="false" oncontextmenu="return false" ondragstart="return false" />
 							</button>
 						))}
 					</div>
@@ -93,35 +167,106 @@ if (row.length) rows.push({ items: row, cols: used });
 		</main>
 
 		<div class="lightbox" id="lightbox">
+			<button class="lightbox-nav prev" id="lightbox-prev" aria-label="Previous photo"><span>‹</span></button>
 			<img id="lightbox-img" src="" alt="" />
+			<button class="lightbox-nav next" id="lightbox-next" aria-label="Next photo"><span>›</span></button>
 		</div>
 	</body>
 </html>
 
 <script>
-	const lightbox = document.getElementById("lightbox") as HTMLDivElement;
-	const lightboxImg = document.getElementById("lightbox-img") as HTMLImageElement;
-
-	document.querySelectorAll<HTMLButtonElement>(".grid-item").forEach((item) => {
-		item.addEventListener("click", () => {
-			const full = item.dataset.full;
-			if (!full) return;
-			lightboxImg.src = full;
-			lightbox.classList.add("open");
+	// Filter bar: purely visual single-select toggle for now (no actual filtering yet)
+	const filterBtns = Array.from(document.querySelectorAll<HTMLButtonElement>(".filter-btn"));
+	filterBtns.forEach((btn) => {
+		btn.addEventListener("click", () => {
+			filterBtns.forEach((b) => b.classList.remove("active"));
+			btn.classList.add("active");
 		});
 	});
 
-	lightbox.addEventListener("click", () => {
+	const lightbox = document.getElementById("lightbox") as HTMLDivElement;
+	const lightboxImg = document.getElementById("lightbox-img") as HTMLImageElement;
+
+	// Discourage right-click save / drag-out of the fullscreen image.
+	// Note: this can't truly prevent screenshots or determined users (browser tools,
+	// dev console, OS screen capture always work) — it's a basic deterrent only.
+	lightboxImg.addEventListener("contextmenu", (e) => e.preventDefault());
+	lightboxImg.addEventListener("dragstart", (e) => e.preventDefault());
+	lightboxImg.style.userSelect = "none";
+	(lightboxImg.style as any).webkitUserSelect = "none";
+	(lightboxImg.style as any).webkitTouchCallout = "none";
+
+	const prevBtn = document.getElementById("lightbox-prev") as HTMLButtonElement;
+	const nextBtn = document.getElementById("lightbox-next") as HTMLButtonElement;
+
+	const galleryItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".grid-item"));
+	const photoSrcs = galleryItems.map((item) => item.dataset.full ?? "");
+	let currentIndex = 0;
+
+	function show(index: number) {
+		currentIndex = (index + photoSrcs.length) % photoSrcs.length;
+		lightboxImg.src = photoSrcs[currentIndex];
+		lightbox.classList.add("open");
+	}
+
+	function close() {
 		lightbox.classList.remove("open");
 		lightboxImg.src = "";
+	}
+
+	galleryItems.forEach((item, i) => {
+		item.addEventListener("click", () => show(i));
 	});
 
-	document.addEventListener("keydown", (e) => {
-		if (e.key === "Escape") {
-			lightbox.classList.remove("open");
-			lightboxImg.src = "";
-		}
+	prevBtn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		show(currentIndex - 1);
 	});
+	nextBtn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		show(currentIndex + 1);
+	});
+
+	lightbox.addEventListener("click", close);
+
+	document.addEventListener("keydown", (e) => {
+		if (!lightbox.classList.contains("open")) return;
+		if (e.key === "Escape") close();
+		if (e.key === "ArrowLeft") show(currentIndex - 1);
+		if (e.key === "ArrowRight") show(currentIndex + 1);
+	});
+
+	// Slideshow: blurred -> AF brackets blink (focusing) -> snap sharp -> hold -> fade out
+	const slides = Array.from(document.querySelectorAll<HTMLDivElement>("#camera-screen .slide"));
+	if (slides.length) {
+		let current = 0;
+		const TIMINGS = { blurHold: 500, focusing: 550, sharpHold: 1300, fadeOut: 350 };
+
+		function runSlide(el: HTMLDivElement) {
+			el.classList.remove("sharp", "focusing");
+			el.classList.add("active");
+			// phase 1: shows up blurred
+			setTimeout(() => {
+				// phase 2: AF brackets blink while "focusing"
+				el.classList.add("focusing");
+				setTimeout(() => {
+					// phase 3: focus snaps — brackets gone, image sharpens (the "shutter" moment)
+					el.classList.remove("focusing");
+					el.classList.add("sharp");
+					setTimeout(() => {
+						// phase 4: fade out, move to next
+						el.classList.remove("active");
+						setTimeout(() => {
+							current = (current + 1) % slides.length;
+							runSlide(slides[current]);
+						}, TIMINGS.fadeOut);
+					}, TIMINGS.sharpHold);
+				}, TIMINGS.focusing);
+			}, TIMINGS.blurHold);
+		}
+
+		runSlide(slides[current]);
+	}
 </script>
 
 <style is:global>
@@ -141,35 +286,36 @@ if (row.length) rows.push({ items: row, cols: used });
 
 <style>
 	.site-header {
+		position: relative;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
 		padding: 1.5rem 3rem;
 	}
 	.logo {
-		font-weight: 800;
-		letter-spacing: 0.15em;
+		font-family: "Dancing Script", cursive;
+		font-weight: 700;
+		font-size: 2rem;
+		letter-spacing: 0.02em;
+		color: #ffffff;
 	}
-
-	.hero {
-		text-align: center;
-		padding: 3rem 1.5rem 2rem;
-	}
-	.hero h1 {
-		font-size: clamp(2.5rem, 6vw, 4.5rem);
-		margin: 0 0 0.5rem;
-		font-weight: 800;
-	}
-	.hero p {
+	.center-tagline {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -30%);
+		font-family: "Dancing Script", cursive;
+		font-weight: 700;
+		font-size: 1.4rem;
 		color: #999;
-		margin: 0;
+		white-space: nowrap;
 	}
 
 	/* --- Camera + slideshow --- */
 	.camera-section {
 		display: flex;
-		justify-content: center;
-		padding: 2rem 1.5rem 4rem;
+		flex-direction: column;
+		align-items: center;
+		padding: 1.5rem 1.5rem 4rem;
 	}
 	.camera {
 		position: relative;
@@ -184,34 +330,63 @@ if (row.length) rows.push({ items: row, cols: used });
 		/* outline extracted with a transparent background, so the page's
 		   dark gray shows through instead of the original pure black */
 	}
-	/* Screen cut-out sits at the same relative position as the LCD in the sketch */
+	/* Sits inside the smaller inner rectangle of the LCD, not the outer bezel */
 	.camera-screen {
 		position: absolute;
-		left: 25.6%;
-		top: 41.5%;
-		width: 39.4%;
-		height: 50%;
+		left: 30.3%;
+		top: 43.7%;
+		width: 31.2%;
+		height: 42.4%;
 		overflow: hidden;
 		border-radius: 2px;
 		z-index: 1;
 		background: #000;
 	}
+	/* Each slide goes through: fade in (blurred) -> AF brackets blink while
+	   focusing -> snap to sharp (brackets gone), like taking a photo. */
 	.slide {
 		position: absolute;
 		inset: 0;
+		opacity: 0;
+		transition: opacity 0.35s ease;
+	}
+	.slide.active {
+		opacity: 1;
+	}
+	.slide img {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
-		opacity: 0;
-		animation: slideshow calc(var(--n) * 5s) infinite;
-		animation-delay: calc(var(--i) * 5s);
+		display: block;
+		filter: blur(7px);
+		transition: filter 0.2s ease-out;
 	}
-	@keyframes slideshow {
-		0% { opacity: 0; }
-		4% { opacity: 1; }
-		16% { opacity: 1; }
-		20% { opacity: 0; }
-		100% { opacity: 0; }
+	.slide.sharp img {
+		filter: blur(0);
+	}
+	.af-grid {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+		display: grid;
+		grid-template-columns: repeat(3, 10px);
+		grid-template-rows: repeat(3, 10px);
+		gap: 4px;
+	}
+	.af-cell {
+		width: 10px;
+		height: 10px;
+		border: 2px solid #59e878;
+		box-shadow: 0 0 6px rgba(89, 232, 120, 0.6);
+		opacity: 0;
+	}
+	.slide.focusing .af-cell {
+		animation: af-blink 0.16s steps(1, end) 3;
+	}
+	@keyframes af-blink {
+		0%, 49% { opacity: 1; }
+		50%, 100% { opacity: 0.1; }
 	}
 
 	/* --- Recent gallery grid --- */
@@ -224,6 +399,56 @@ if (row.length) rows.push({ items: row, cols: used });
 		font-size: 1.5rem;
 		font-weight: 700;
 		margin-bottom: 1.5rem;
+	}
+	.filter-bar {
+		display: flex;
+		justify-content: space-evenly;
+		align-items: center;
+		margin-bottom: 2rem;
+		padding: 0 1rem;
+	}
+	.filter-btn {
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: #888;
+		padding: 0.4rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+		transition: color 0.2s ease;
+	}
+	.filter-btn:hover {
+		color: #bbb;
+	}
+	.filter-btn.active {
+		color: #fff;
+	}
+	.filter-btn svg {
+		width: 22px;
+		height: 22px;
+		display: block;
+	}
+	.filter-btn .tooltip {
+		position: absolute;
+		bottom: 100%;
+		left: 50%;
+		transform: translate(-50%, -0.4rem);
+		background: #2a2a2a;
+		color: #ccc;
+		font-size: 0.75rem;
+		white-space: nowrap;
+		padding: 0.3rem 0.6rem;
+		border-radius: 4px;
+		opacity: 0;
+		visibility: hidden;
+		transition: opacity 0.15s ease;
+		pointer-events: none;
+	}
+	.filter-btn:hover .tooltip {
+		opacity: 1;
+		visibility: visible;
 	}
 	.grid-row {
 		display: grid;
@@ -254,6 +479,14 @@ if (row.length) rows.push({ items: row, cols: used });
 		object-fit: cover;
 		display: block;
 		transition: transform 0.4s ease;
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-touch-callout: none;
+	}
+	.slide img {
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-touch-callout: none;
 	}
 	.grid-item:hover img {
 		transform: scale(1.05);
@@ -283,5 +516,39 @@ if (row.length) rows.push({ items: row, cols: used });
 		object-fit: contain;
 		border-radius: 0.5rem;
 		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+	}
+	.lightbox-nav {
+		position: absolute;
+		top: 50%;
+		transform: translateY(-50%);
+		background: rgba(255, 255, 255, 0.08);
+		border: none;
+		color: #f2f2f2;
+		font-size: 2rem;
+		line-height: 1;
+		padding: 0;
+		width: 3rem;
+		height: 3rem;
+		border-radius: 50%;
+		display: grid;
+		place-items: center;
+		font-family: Arial, sans-serif;
+		text-indent: 0;
+	}
+	.lightbox-nav span {
+		display: block;
+		transform: translateY(-0.06em);
+		cursor: pointer;
+		transition: background 0.2s ease;
+		z-index: 101;
+	}
+	.lightbox-nav:hover {
+		background: rgba(255, 255, 255, 0.18);
+	}
+	.lightbox-nav.prev {
+		left: 2rem;
+	}
+	.lightbox-nav.next {
+		right: 2rem;
 	}
 </style>
