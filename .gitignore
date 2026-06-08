@@ -3,3 +3,4 @@ dist/
 .astro/
 public/photos/*
 !public/photos/README.txt
+public/photos-resized/

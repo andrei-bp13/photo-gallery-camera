@@ -1,20 +1,48 @@
 ---
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { imageSize } from "image-size";
+import sharp from "sharp";
 
 // Any image dropped into public/photos/ is picked up automatically.
 const photosDir = new URL("../../public/photos", import.meta.url);
 const photoFiles = readdirSync(photosDir)
 	.filter((name) => /\.(jpe?g|png|webp|gif)$/i.test(name));
 
+// Pre-resize photos down to the actual pixel size they're displayed at, so the
+// browser downloads much smaller files instead of full-resolution originals.
+// Resized copies are cached on disk in public/photos-resized/ and only
+// regenerated if missing.
+const resizedDir = new URL("../../public/photos-resized/", import.meta.url);
+if (!existsSync(resizedDir)) mkdirSync(resizedDir, { recursive: true });
+
+// Target widths: gallery grid cells and slideshow frame are both modestly sized,
+// so anything wider than this is just wasted bandwidth.
+const GRID_WIDTH = 640;
+const SLIDE_WIDTH = 900;
+
+async function resizedSrc(name: string, width: number, suffix: string): Promise<string> {
+	const outName = `${name.replace(/\.[^.]+$/, "")}-${suffix}.webp`;
+	const outPath = new URL(outName, resizedDir);
+	if (!existsSync(outPath)) {
+		await sharp(readFileSync(new URL(`./${name}`, `${photosDir}/`)))
+			.resize({ width, withoutEnlargement: true })
+			.webp({ quality: 78 })
+			.toFile(fileURLToPath(outPath));
+	}
+	return `/photos-resized/${encodeURIComponent(outName)}`;
+}
+
 // Look up real dimensions so we can find landscape shots and group the gallery by orientation.
-const sized = photoFiles.map((name) => {
+const sized = await Promise.all(photoFiles.map(async (name) => {
 	const { width, height } = imageSize(readFileSync(new URL(`./${name}`, `${photosDir}/`)));
-	return {
-		src: `/photos/${encodeURIComponent(name)}`,
-		landscape: width > height,
-	};
-});
+	const landscape = width > height;
+	const [src, slideSrc] = await Promise.all([
+		resizedSrc(name, GRID_WIDTH, "grid"),
+		resizedSrc(name, SLIDE_WIDTH, "slide"),
+	]);
+	return { src, slideSrc, fullSrc: `/photos/${encodeURIComponent(name)}`, landscape };
+}));
 
 // Shuffle (Fisher-Yates) so the gallery layout is different on every page load.
 function shuffle<T>(arr: T[]): T[] {
@@ -27,7 +55,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 const gallery = shuffle(sized);
-const slideshow = sized.filter((p) => p.landscape).map((p) => p.src);
+const slideshow = sized.filter((p) => p.landscape).map((p) => p.slideSrc);
 
 // Group into rows: a landscape photo takes the space of two portraits,
 // so each row holds either 4 portraits, or 2 portraits + 1 landscape.
@@ -156,7 +184,7 @@ if (row.length) rows.push({ items: row, cols: used });
 						{r.items.map((photo) => (
 							<button
 								class:list={["grid-item", photo.landscape ? "landscape" : "portrait"]}
-								data-full={photo.src}
+								data-full={photo.fullSrc}
 							>
 								<img src={photo.src} alt="" loading="lazy" draggable="false" oncontextmenu="return false" ondragstart="return false" />
 							</button>
