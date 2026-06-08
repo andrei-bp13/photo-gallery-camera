@@ -67,7 +67,6 @@ for (const photo of gallery) {
 	used += cost;
 }
 if (row.length) rows.push({ items: row, cols: used });
-
 ---
 
 <html lang="en">
@@ -78,13 +77,31 @@ if (row.length) rows.push({ items: row, cols: used });
 		<meta name="generator" content={Astro.generator} />
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
+		<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Orbitron:wght@500;700&family=Great+Vibes&display=swap" rel="stylesheet" />
 		<title>Photo Gallery</title>
 	</head>
 	<body>
+		<div class="supernova-field" id="supernova-field" aria-hidden="true"></div>
 		<header class="site-header">
-			<span class="logo">Ndivmxm</span>
-			<span class="center-tagline">Droplets of light, suspended in time</span>
+			<div class="brand">
+				<svg class="brand-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+					<ellipse cx="24" cy="25" rx="22" ry="7" stroke="#c9a84c" stroke-width="1" />
+					<circle cx="40" cy="21.5" r="1.5" fill="#c9a84c" />
+					<g fill="#c9a84c">
+						<path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(0 24 25)" />
+						<path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(60 24 25)" />
+						<path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(120 24 25)" />
+						<path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(180 24 25)" />
+						<path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(240 24 25)" />
+						<path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(300 24 25)" />
+					</g>
+				</svg>
+				<span class="brand-text">
+					<span class="brand-line brand-orbit">ORBIT</span>
+					<span class="brand-line brand-dust">DUST</span>
+				</span>
+			</div>
+			<span class="center-tagline">Just light. Caught in orbit.</span>
 		</header>
 
 		<main>
@@ -196,6 +213,64 @@ if (row.length) rows.push({ items: row, cols: used });
 </html>
 
 <script>
+	// --- Supernova stars: 10 independent dying-star flickers scattered over the page ---
+	(() => {
+		const field = document.getElementById("supernova-field");
+		if (!field) return;
+
+		const STAR_COUNT = 10;
+		const LIFESPAN = 1; // seconds — exact total time visible (swell + hold + collapse)
+
+		const styleSheet = document.createElement("style");
+		document.head.appendChild(styleSheet);
+
+		function rand(a: number, b: number) {
+			return a + Math.random() * (b - a);
+		}
+
+		function spawn(index: number) {
+			const star = document.createElement("div");
+			star.className = "sn-star";
+			star.innerHTML = `<span class="sn-glow"></span><span class="sn-core"></span>`;
+
+			// Completely random position anywhere on the full page height.
+			const x = rand(2, 98);
+			const y = rand(2, 98);
+			star.style.left = `${x}%`;
+			star.style.top = `${y}%`;
+
+			// Random pause (1–4s) before this star appears again — combined with
+			// the fixed 1s lifespan to form one full cycle. Generating a bespoke
+			// keyframe per spawn (with the active phase scaled to its share of
+			// the cycle) keeps the swell→hold→collapse timing exact at 1s
+			// regardless of how long the idle gap is.
+			const idle = rand(1, 4);
+			const cycle = LIFESPAN + idle;
+			const activePct = (LIFESPAN / cycle) * 100;
+			const swellEnd = activePct * 0.32;
+			const holdEnd = activePct * 0.62;
+			const collapseEnd = activePct;
+			const name = `sn-life-${index}-${Math.random().toString(36).slice(2, 8)}`;
+
+			styleSheet.sheet?.insertRule(`
+				@keyframes ${name} {
+					0%                       { transform: translate(-50%,-50%) scale(0.02); opacity: 0; }
+					${swellEnd.toFixed(3)}%  { transform: translate(-50%,-50%) scale(1);    opacity: 1; }
+					${holdEnd.toFixed(3)}%   { transform: translate(-50%,-50%) scale(1);    opacity: 1; }
+					${collapseEnd.toFixed(3)}% { transform: translate(-50%,-50%) scale(0.02); opacity: 0; }
+					100%                     { transform: translate(-50%,-50%) scale(0.02); opacity: 0; }
+				}
+			`, styleSheet.sheet.cssRules.length);
+
+			star.style.animation = `${name} ${cycle}s ease-in-out infinite`;
+			star.style.animationDelay = `${rand(0, cycle)}s`;
+
+			field.appendChild(star);
+		}
+
+		for (let i = 0; i < STAR_COUNT; i++) spawn(i);
+	})();
+
 	// Filter bar: purely visual single-select toggle for now (no actual filtering yet)
 	const filterBtns = Array.from(document.querySelectorAll<HTMLButtonElement>(".filter-btn"));
 	filterBtns.forEach((btn) => {
@@ -299,36 +374,116 @@ if (row.length) rows.push({ items: row, cols: used });
 		box-sizing: border-box;
 	}
 	body {
+		position: relative;
 		margin: 0;
 		background: #1a1a1a;
 		color: #f2f2f2;
+	}
+
+	/* ── Supernova stars ─────────────────────────────────────── */
+	.supernova-field {
+		position: fixed;
+		inset: 0;
+		z-index: -1;
+		pointer-events: none;
+		overflow: hidden;
+	}
+	.sn-star {
+		position: absolute;
+		transform: translate(-50%, -50%) scale(0.02);
+		opacity: 0;
+		pointer-events: none;
+		will-change: transform, opacity;
+	}
+	/* glow disc behind the core */
+	.sn-glow {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		background: radial-gradient(circle, rgba(200, 230, 255, 0.85) 0%, rgba(140, 180, 255, 0.5) 30%, rgba(100, 120, 255, 0.12) 65%, transparent 100%);
+		filter: blur(4px);
+	}
+	/* 4-point sparkle core via clip-path */
+	.sn-core {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: 16px;
+		height: 16px;
+		/* 4-pointed star / sparkle cross shape */
+		clip-path: polygon(
+			50% 0%,  56% 44%,
+			100% 50%, 56% 56%,
+			50% 100%, 44% 56%,
+			0% 50%,  44% 44%
+		);
+		background: radial-gradient(circle at 50% 50%, #ffffff 0%, #c8e8ff 55%, #7ab8ff 100%);
 	}
 </style>
 
 <style>
 	.site-header {
 		position: relative;
+		z-index: 10;
 		display: flex;
 		align-items: center;
-		padding: 1.5rem 3rem;
+		min-height: 64px;
+		padding: 0 2rem;
+		background: #111111;
+		border-bottom: 1px solid #333333;
 	}
-	.logo {
-		font-family: "Dancing Script", cursive;
+	.brand {
+		display: flex;
+		align-items: center;
+		gap: 0.36rem;
+		padding-left: 30px;
+	}
+	.brand-icon {
+		width: 78px;
+		height: 78px;
+		flex-shrink: 0;
+	}
+	.brand-text {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		line-height: 1.05;
+	}
+	.brand-line {
+		font-family: "Orbitron", sans-serif;
 		font-weight: 700;
-		font-size: 2rem;
-		letter-spacing: 0.02em;
-		color: #ffffff;
+	}
+	.brand-orbit {
+		font-size: 17px;
+		letter-spacing: 4px;
+		color: #c9a84c;
+	}
+	.brand-dust {
+		font-size: 15px;
+		letter-spacing: 7px;
+		color: rgba(201, 168, 76, 0.7);
 	}
 	.center-tagline {
 		position: absolute;
 		left: 50%;
 		top: 50%;
-		transform: translate(-50%, -30%);
-		font-family: "Dancing Script", cursive;
-		font-weight: 700;
-		font-size: 1.4rem;
+		transform: translate(-50%, -50%);
+		font-family: "Great Vibes", cursive;
+		font-weight: 400;
+		font-size: 1.5rem;
+		letter-spacing: 0.04em;
 		color: #999;
 		white-space: nowrap;
+	}
+	@media (max-width: 640px) {
+		.center-tagline {
+			display: none;
+		}
 	}
 
 	/* --- Camera + slideshow --- */
@@ -444,7 +599,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		color: #bbb;
 	}
 	.filter-btn.active {
-		color: #fff;
+		color: #c9a84c;
 	}
 	.filter-btn svg {
 		width: 22px;
@@ -542,9 +697,9 @@ if (row.length) rows.push({ items: row, cols: used });
 		position: absolute;
 		top: 50%;
 		transform: translateY(-50%);
-		background: rgba(255, 255, 255, 0.08);
+		background: transparent;
 		border: none;
-		color: #f2f2f2;
+		color: rgba(255, 255, 255, 0.55);
 		font-size: 2rem;
 		line-height: 1;
 		padding: 0;
@@ -555,16 +710,16 @@ if (row.length) rows.push({ items: row, cols: used });
 		place-items: center;
 		font-family: Arial, sans-serif;
 		text-indent: 0;
+		transition: color 0.2s ease;
 	}
 	.lightbox-nav span {
 		display: block;
 		transform: translateY(-0.06em);
 		cursor: pointer;
-		transition: background 0.2s ease;
 		z-index: 101;
 	}
 	.lightbox-nav:hover {
-		background: rgba(255, 255, 255, 0.18);
+		color: #fff;
 	}
 	.lightbox-nav.prev {
 		left: 2rem;
