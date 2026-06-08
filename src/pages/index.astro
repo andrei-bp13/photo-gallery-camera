@@ -16,18 +16,14 @@ const photoFiles = readdirSync(photosDir)
 const resizedDir = new URL("../../public/photos-resized/", import.meta.url);
 if (!existsSync(resizedDir)) mkdirSync(resizedDir, { recursive: true });
 
-// Target widths: gallery grid cells and slideshow frame are both modestly sized,
-// so anything wider than this is just wasted bandwidth.
-const GRID_WIDTH = 640;
-const SLIDE_WIDTH = 900;
-
-async function resizedSrc(name: string, width: number, suffix: string): Promise<string> {
-	const outName = `${name.replace(/\.[^.]+$/, "")}-${suffix}.webp`;
+// Re-encode photos as compressed WebP to cut file size — WITHOUT changing their
+// pixel dimensions — so they look exactly as sharp/large as before but download faster.
+async function compressedSrc(name: string): Promise<string> {
+	const outName = `${name.replace(/\.[^.]+$/, "")}.webp`;
 	const outPath = new URL(outName, resizedDir);
 	if (!existsSync(outPath)) {
 		await sharp(readFileSync(new URL(`./${name}`, `${photosDir}/`)))
-			.resize({ width, withoutEnlargement: true })
-			.webp({ quality: 78 })
+			.webp({ quality: 70 })
 			.toFile(fileURLToPath(outPath));
 	}
 	return `/photos-resized/${encodeURIComponent(outName)}`;
@@ -37,11 +33,8 @@ async function resizedSrc(name: string, width: number, suffix: string): Promise<
 const sized = await Promise.all(photoFiles.map(async (name) => {
 	const { width, height } = imageSize(readFileSync(new URL(`./${name}`, `${photosDir}/`)));
 	const landscape = width > height;
-	const [src, slideSrc] = await Promise.all([
-		resizedSrc(name, GRID_WIDTH, "grid"),
-		resizedSrc(name, SLIDE_WIDTH, "slide"),
-	]);
-	return { src, slideSrc, fullSrc: `/photos/${encodeURIComponent(name)}`, landscape };
+	const compressed = await compressedSrc(name);
+	return { src: compressed, slideSrc: compressed, fullSrc: `/photos/${encodeURIComponent(name)}`, landscape };
 }));
 
 // Shuffle (Fisher-Yates) so the gallery layout is different on every page load.
