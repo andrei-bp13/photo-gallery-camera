@@ -1247,11 +1247,11 @@ if (row.length) {
 		padding: 0;
 		cursor: pointer;
 		background: #2a2a2a;
-		/* Reserve a transparent outline 2px outside the picture; only the colour
-		   fades in on hover, so there's no layout shift and no compositing layer. */
+		/* Reserve a transparent outline 4px outside the picture; only the colour
+		   fades in/out on hover, so there's no layout shift and no compositing layer. */
 		outline: 2px solid transparent;
-		outline-offset: 2px;
-		transition: outline-color 0.2s ease;
+		outline-offset: 4px;
+		transition: outline-color 0.45s ease;
 	}
 	/* Reveal animation: items start hidden + nudged down, then fade/slide into place
 	   as they scroll into view (class toggled by JS). Gated by .reveal-on so the
