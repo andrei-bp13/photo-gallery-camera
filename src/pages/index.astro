@@ -1247,6 +1247,11 @@ if (row.length) {
 		padding: 0;
 		cursor: pointer;
 		background: #2a2a2a;
+		/* Reserve a transparent outline 2px outside the picture; only the colour
+		   fades in on hover, so there's no layout shift and no compositing layer. */
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		transition: outline-color 0.2s ease;
 	}
 	/* Reveal animation: items start hidden + nudged down, then fade/slide into place
 	   as they scroll into view (class toggled by JS). Gated by .reveal-on so the
@@ -1279,7 +1284,6 @@ if (row.length) {
 		height: 100%;
 		object-fit: cover;
 		display: block;
-		transition: transform 0.4s ease;
 		-webkit-user-select: none;
 		user-select: none;
 		-webkit-touch-callout: none;
@@ -1289,13 +1293,11 @@ if (row.length) {
 		user-select: none;
 		-webkit-touch-callout: none;
 	}
-	/* Zoom on hover only on real pointer devices. will-change keeps the hovered
-	   image on its own GPU layer so the scale is composited (no per-frame
-	   re-rasterization / shimmer); only the one hovered image is promoted. */
+	/* Gold outline on hover, only on real pointer devices — touch devices never
+	   trigger it, so it can't get stuck after a tap. */
 	@media (hover: hover) {
-		.grid-item:hover img {
-			transform: scale(1.05);
-			will-change: transform;
+		.grid-item:hover {
+			outline-color: #c9a84c;
 		}
 	}
 
