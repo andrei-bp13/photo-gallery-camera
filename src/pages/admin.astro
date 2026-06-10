@@ -680,10 +680,18 @@ function processImage(file) {
       canvas.getContext('2d').drawImage(img, 0, 0, width, height);
       canvas.toBlob(blob => {
         URL.revokeObjectURL(url);
+        if (!blob) {
+          reject(new Error('WebP conversion failed — browser could not encode WebP'));
+          return;
+        }
+        if (!blob.type.includes('webp')) {
+          reject(new Error(`Browser returned ${blob.type} instead of WebP — use a Chromium or Firefox browser`));
+          return;
+        }
         resolve({ blob, landscape });
       }, 'image/webp', 0.85);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(`Failed to load image: ${file.name}`)); };
     img.src = url;
   });
 }

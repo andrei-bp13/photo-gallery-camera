@@ -26,6 +26,7 @@ export async function onRequestPost(ctx) {
   const landscape = formData.get('landscape') === 'true';
 
   if (!file || !filename) return Response.json({ error: 'Missing file or filename' }, { status: 400 });
+  if (!file.type.includes('webp')) return Response.json({ error: `File must be WebP (got ${file.type})` }, { status: 415 });
 
   // Sanitise filename: strip path separators, ensure .webp
   const safeName = filename.replace(/[/\\]/g, '').replace(/[^a-zA-Z0-9._\- ]/g, '') || `photo-${Date.now()}.webp`;
