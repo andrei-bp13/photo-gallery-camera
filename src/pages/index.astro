@@ -249,13 +249,13 @@ if (row.length) {
 								data-filename={photo.name}
 							>
 								<img
-									src={photo.src}
-									srcset={`${photo.thumbSrc} 600w, ${photo.src} 2400w`}
+									src=""
+									data-src={photo.src}
+									data-srcset={`${photo.thumbSrc} 600w, ${photo.src} 2400w`}
 									sizes="(max-width: 640px) 50vw, 300px"
 									width={photo.landscape ? 800 : 600}
 									height={photo.landscape ? 450 : 800}
 									alt=""
-									loading="lazy"
 									draggable="false"
 									onerror="this.srcset=''"
 									oncontextmenu="return false"
@@ -305,6 +305,22 @@ if (row.length) {
 	// ── Gallery items ─────────────────────────────────────────────────────────
 	const galleryItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".grid-item"));
 	const gallerySection = document.querySelector<HTMLElement>(".gallery")!;
+
+	// ── Lazy-load via IntersectionObserver (avoids browser evicting images on scroll) ──
+	const lazyObs = new IntersectionObserver((entries) => {
+		entries.forEach(entry => {
+			if (!entry.isIntersecting) return;
+			const img = entry.target as HTMLImageElement;
+			if (img.dataset.src) img.src = img.dataset.src;
+			if (img.dataset.srcset) img.srcset = img.dataset.srcset;
+			lazyObs.unobserve(img);
+		});
+	}, { rootMargin: '400px 0px' });
+
+	galleryItems.forEach(item => {
+		const img = item.querySelector('img');
+		if (img) lazyObs.observe(img);
+	});
 
 	function packIntoRows(items: HTMLButtonElement[]) {
 		const result: { items: HTMLButtonElement[]; cols: number }[] = [];
@@ -612,6 +628,7 @@ if (row.length) {
 	html, body {
 		margin: 0;
 		overflow-x: hidden;
+		scroll-behavior: smooth;
 	}
 	body {
 		background: #1a1a1a;
