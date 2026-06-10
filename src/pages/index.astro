@@ -75,6 +75,10 @@ if (row.length) {
 			if ('serviceWorker' in navigator) {
 				navigator.serviceWorker.register('/sw.js').catch(() => {});
 			}
+			// Enable the gallery reveal animation only when JS is active (the gallery
+			// already needs JS to lazy-load images, so this adds no new failure mode).
+			// Set in <head> so the hidden state applies from first paint — no flash.
+			document.documentElement.classList.add('reveal-on');
 		</script>
 	</head>
 	<body>
@@ -339,6 +343,36 @@ if (row.length) {
 		const img = item.querySelector('img');
 		if (img) lazyObs.observe(img);
 	});
+
+	// ── Reveal animation: fade + slide-up each item as it scrolls into view ──
+	// Triggers at the actual viewport (not 800px ahead like the loader), waits for
+	// the image to finish loading, and staggers items that appear together so each
+	// row cascades left-to-right.
+	const revealObs = new IntersectionObserver((entries) => {
+		let stagger = 0;
+		entries.forEach(entry => {
+			if (!entry.isIntersecting) return;
+			const item = entry.target as HTMLElement;
+			revealObs.unobserve(item);
+			const delay = stagger * 70;
+			stagger++;
+			const img = item.querySelector('img');
+			const reveal = () => {
+				item.style.transitionDelay = delay + 'ms';
+				item.classList.add('revealed');
+			};
+			if (img && img.complete && img.naturalWidth > 0) {
+				reveal();
+			} else if (img) {
+				img.addEventListener('load', reveal, { once: true });
+				img.addEventListener('error', reveal, { once: true });
+			} else {
+				reveal();
+			}
+		});
+	}, { rootMargin: '0px 0px -5% 0px', threshold: 0.01 });
+
+	galleryItems.forEach(item => revealObs.observe(item));
 
 	function packIntoRows(items: HTMLButtonElement[]) {
 		const result: { items: HTMLButtonElement[]; cols: number }[] = [];
@@ -1094,6 +1128,24 @@ if (row.length) {
 		padding: 0;
 		cursor: pointer;
 		background: #2a2a2a;
+	}
+	/* Reveal animation: items start hidden + nudged down, then fade/slide into place
+	   as they scroll into view (class toggled by JS). Gated by .reveal-on so the
+	   gallery is fully visible if JS is unavailable. */
+	.reveal-on .grid-item {
+		opacity: 0;
+		transform: translateY(16px);
+		transition: opacity 0.55s ease, transform 0.55s ease;
+	}
+	.reveal-on .grid-item.revealed {
+		opacity: 1;
+		transform: none;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.reveal-on .grid-item {
+			transition: opacity 0.3s ease;
+			transform: none;
+		}
 	}
 	.grid-item.portrait {
 		grid-column: span 1;
