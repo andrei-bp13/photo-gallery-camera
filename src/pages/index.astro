@@ -1289,8 +1289,14 @@ if (row.length) {
 		user-select: none;
 		-webkit-touch-callout: none;
 	}
-	.grid-item:hover img {
-		transform: scale(1.05);
+	/* Zoom on hover only on real pointer devices. will-change keeps the hovered
+	   image on its own GPU layer so the scale is composited (no per-frame
+	   re-rasterization / shimmer); only the one hovered image is promoted. */
+	@media (hover: hover) {
+		.grid-item:hover img {
+			transform: scale(1.05);
+			will-change: transform;
+		}
 	}
 
 	/* --- Lightbox --- */
