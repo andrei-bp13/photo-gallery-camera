@@ -4,20 +4,8 @@
     "landscape": true
   },
   {
-    "name": "2dudes.webp",
-    "landscape": false
-  },
-  {
     "name": "2towers.webp",
     "landscape": false
-  },
-  {
-    "name": "DSC03002.webp",
-    "landscape": false
-  },
-  {
-    "name": "DSC03049.webp",
-    "landscape": true
   },
   {
     "name": "alien.webp",
@@ -124,6 +112,14 @@
     "landscape": true
   },
   {
+    "name": "DSC03002.webp",
+    "landscape": false
+  },
+  {
+    "name": "DSC03049.webp",
+    "landscape": true
+  },
+  {
     "name": "duckduckgoose.webp",
     "landscape": true
   },
@@ -200,14 +196,6 @@
     "landscape": true
   },
   {
-    "name": "hazy.webp",
-    "landscape": true
-  },
-  {
-    "name": "hikers.webp",
-    "landscape": false
-  },
-  {
     "name": "hyperspeed.webp",
     "landscape": true
   },
@@ -226,10 +214,6 @@
   {
     "name": "japaan.webp",
     "landscape": false
-  },
-  {
-    "name": "je.webp",
-    "landscape": true
   },
   {
     "name": "jupiter.webp",
@@ -292,10 +276,6 @@
     "landscape": true
   },
   {
-    "name": "mountains6.webp",
-    "landscape": false
-  },
-  {
     "name": "nene.webp",
     "landscape": false
   },
@@ -330,10 +310,6 @@
   {
     "name": "pussy.webp",
     "landscape": false
-  },
-  {
-    "name": "puzzle.webp",
-    "landscape": true
   },
   {
     "name": "randompot.webp",
@@ -412,10 +388,6 @@
     "landscape": false
   },
   {
-    "name": "trash.webp",
-    "landscape": false
-  },
-  {
     "name": "veins.webp",
     "landscape": false
   },
@@ -425,10 +397,6 @@
   },
   {
     "name": "whereyougoing.webp",
-    "landscape": true
-  },
-  {
-    "name": "wimdy.webp",
     "landscape": true
   },
   {
