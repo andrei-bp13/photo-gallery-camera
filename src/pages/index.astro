@@ -389,19 +389,19 @@ if (row.length) rows.push({ items: row, cols: used });
 		if (dieHoverInterval !== null) { clearInterval(dieHoverInterval); dieHoverInterval = null; }
 
 		const N = 50 + Math.floor(Math.random() * 11); // 50–60
+		// Pick winner randomly upfront — independent of where the ping-pong lands
+		const winner = regularBtns[Math.floor(Math.random() * regularBtns.length)];
 		// Ease-out: very fast start (~20ms), slow end (~500ms)
 		const spinDelay = (i: number) => Math.round(20 + 480 * Math.pow(i / (N - 1), 2));
 
 		setOnlyActive(dieBtn);
 
-		// ── Phase 1: ping-pong bounce ─────────────────────────────────────────
+		// ── Phase 1: ping-pong bounce (visual only) ───────────────────────────
 		let pos = 0;
 		let dir = 1;
-		let lastBtn = regularBtns[pos];
 		for (let i = 0; i < N; i++) {
 			filterBtns.forEach(b => { if (b !== dieBtn) b.classList.remove("active"); });
-			lastBtn = regularBtns[pos];
-			lastBtn.classList.add("active");
+			regularBtns[pos].classList.add("active");
 			dieBtn.classList.add("active");
 			setDieFace(randomFace());
 			await sleep(spinDelay(i));
@@ -410,7 +410,7 @@ if (row.length) rows.push({ items: row, cols: used });
 			else if (pos < 0) { pos = 1; dir = 1; }
 		}
 
-		// ── Phase 2: closing sweep — die → lastBtn ───────────────────────────
+		// ── Phase 2: closing sweep — die → winner ────────────────────────────
 		const SWEEP_DELAY = 80;
 		filterBtns.forEach(b => b.classList.remove("active"));
 		dieBtn.classList.add("active");
@@ -419,14 +419,14 @@ if (row.length) rows.push({ items: row, cols: used });
 		for (const btn of [...regularBtns].reverse()) {
 			filterBtns.forEach(b => b.classList.remove("active"));
 			btn.classList.add("active");
-			if (btn === lastBtn) break;
+			if (btn === winner) break;
 			await sleep(SWEEP_DELAY);
 		}
 		await sleep(SWEEP_DELAY);
 
-		// ── Phase 3: sweep back from lastBtn to all (no die) ─────────────────
-		const lastIdx = regularBtns.indexOf(lastBtn);
-		for (let i = lastIdx; i >= 0; i--) {
+		// ── Phase 3: sweep back from winner to all (no die) ───────────────────
+		const winnerIdx = regularBtns.indexOf(winner);
+		for (let i = winnerIdx; i >= 0; i--) {
 			filterBtns.forEach(b => b.classList.remove("active"));
 			regularBtns[i].classList.add("active");
 			await sleep(SWEEP_DELAY);
@@ -434,9 +434,9 @@ if (row.length) rows.push({ items: row, cols: used });
 
 		// ── End: activate selected category, play its icon animation ─────────
 		filterBtns.forEach(b => b.classList.remove("active"));
-		lastBtn.classList.add("active");
-		applyFilter(lastBtn.dataset.tag ?? "all");
-		playIconOnce(lastBtn);
+		winner.classList.add("active");
+		applyFilter(winner.dataset.tag ?? "all");
+		playIconOnce(winner);
 		dieRunning = false;
 	}
 
