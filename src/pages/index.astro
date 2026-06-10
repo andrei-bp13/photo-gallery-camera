@@ -837,7 +837,10 @@ if (row.length) {
 
 </style>
 
-<style>
+<!-- Global so styles also apply to gallery items + camera slides that are
+     re-created in JS when the live snapshot loads (scoped styles would only
+     match the server-rendered elements, breaking dimensions + the slide effect). -->
+<style is:global>
 	.site-header {
 		position: relative;
 		z-index: 10;
