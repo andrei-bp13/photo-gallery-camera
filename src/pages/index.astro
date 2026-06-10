@@ -32,6 +32,7 @@ let used = 0;
 for (const photo of gallery) {
 	const cost = photo.landscape ? 2 : 1;
 	if (used + cost > 4) {
+		row.sort((a, b) => (b.landscape ? 1 : 0) - (a.landscape ? 1 : 0));
 		rows.push({ items: row, cols: used });
 		row = [];
 		used = 0;
@@ -39,7 +40,10 @@ for (const photo of gallery) {
 	row.push(photo);
 	used += cost;
 }
-if (row.length) rows.push({ items: row, cols: used });
+if (row.length) {
+	row.sort((a, b) => (b.landscape ? 1 : 0) - (a.landscape ? 1 : 0));
+	rows.push({ items: row, cols: used });
+}
 ---
 
 <html lang="en">
@@ -226,17 +230,19 @@ if (row.length) rows.push({ items: row, cols: used });
 						</svg>
 					</button>
 				</div>
-				<div class="gallery-grid">
-					{gallery.map((photo) => (
-						<button
-							class:list={["grid-item", photo.landscape ? "landscape" : "portrait"]}
-							data-full={photo.fullSrc}
-							data-filename={photo.name}
-						>
-							<img src={photo.src} alt="" loading="lazy" draggable="false" oncontextmenu="return false" ondragstart="return false" />
-						</button>
-					))}
-				</div>
+				{rows.map((r) => (
+					<div class="grid-row" style={`--cols: ${r.cols}`}>
+						{r.items.map((photo) => (
+							<button
+								class:list={["grid-item", photo.landscape ? "landscape" : "portrait"]}
+								data-full={photo.fullSrc}
+								data-filename={photo.name}
+							>
+								<img src={photo.src} alt="" loading="lazy" draggable="false" oncontextmenu="return false" ondragstart="return false" />
+							</button>
+						))}
+					</div>
+				))}
 			</section>
 		</main>
 
@@ -274,16 +280,46 @@ if (row.length) rows.push({ items: row, cols: used });
 
 	// ── Gallery items ─────────────────────────────────────────────────────────
 	const galleryItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".grid-item"));
+	const gallerySection = document.querySelector<HTMLElement>(".gallery")!;
+
+	function packIntoRows(items: HTMLButtonElement[]) {
+		const result: { items: HTMLButtonElement[]; cols: number }[] = [];
+		let i = 0;
+		while (i < items.length) {
+			const chunk: HTMLButtonElement[] = [];
+			let cols = 0;
+			while (i < items.length) {
+				const cost = items[i].classList.contains("landscape") ? 2 : 1;
+				if (cols + cost > 4) break;
+				chunk.push(items[i]);
+				cols += cost;
+				i++;
+			}
+			chunk.sort((a, b) => (b.classList.contains("landscape") ? 1 : 0) - (a.classList.contains("landscape") ? 1 : 0));
+			result.push({ items: chunk, cols });
+		}
+		return result;
+	}
 
 	function applyFilter(tag: string) {
-		galleryItems.forEach(item => {
-			if (tag === "all" || !tagsLoaded) {
-				item.style.display = "";
-			} else {
+		const visible = (tag === "all" || !tagsLoaded)
+			? galleryItems
+			: galleryItems.filter(item => {
 				const tags = tagMap.get(item.dataset.filename ?? "") ?? [];
-				item.style.display = tags.includes(tag) ? "" : "none";
-			}
-		});
+				return tags.includes(tag);
+			});
+
+		gallerySection.querySelectorAll<HTMLElement>(".grid-row").forEach(r => r.remove());
+
+		const frag = document.createDocumentFragment();
+		for (const { items, cols } of packIntoRows(visible)) {
+			const div = document.createElement("div");
+			div.className = "grid-row";
+			div.style.setProperty("--cols", String(cols));
+			items.forEach(item => div.appendChild(item));
+			frag.appendChild(div);
+		}
+		gallerySection.appendChild(frag);
 	}
 
 	// ── Die face definitions ──────────────────────────────────────────────────
@@ -538,8 +574,11 @@ if (row.length) rows.push({ items: row, cols: used });
 	* {
 		box-sizing: border-box;
 	}
-	body {
+	html, body {
 		margin: 0;
+		overflow-x: hidden;
+	}
+	body {
 		background: #1a1a1a;
 		color: #f2f2f2;
 	}
@@ -948,11 +987,12 @@ if (row.length) rows.push({ items: row, cols: used });
 		30% { fill: transparent; }
 	}
 
-	.gallery-grid {
+	.grid-row {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(var(--cols), 1fr);
 		align-items: center;
 		gap: 1rem;
+		margin-bottom: 1rem;
 	}
 	.grid-item {
 		overflow: hidden;
