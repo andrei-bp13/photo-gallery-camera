@@ -391,8 +391,10 @@ if (row.length) rows.push({ items: row, cols: used });
 		const N = 50 + Math.floor(Math.random() * 11); // 50–60
 		// Pick winner randomly upfront — independent of where the ping-pong lands
 		const winner = regularBtns[Math.floor(Math.random() * regularBtns.length)];
-		// Ease-out: very fast start (~20ms), slow end (~500ms)
-		const spinDelay = (i: number) => Math.round(20 + 480 * Math.pow(i / (N - 1), 2));
+		// Ease-out shape: ratio 1→25 (quadratic). Normalize so total = 3000ms exactly.
+		const rawDelays = Array.from({ length: N }, (_, i) => 1 + 24 * Math.pow(i / (N - 1), 2));
+		const scale = 3000 / rawDelays.reduce((s, d) => s + d, 0);
+		const spinDelay = (i: number) => rawDelays[i] * scale;
 
 		setOnlyActive(dieBtn);
 
