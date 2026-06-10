@@ -297,7 +297,7 @@ if (row.length) {
 
 	(async () => {
 		try {
-			const res = await fetch("/api/photos?status=current");
+			const res = await fetch("/api/tags");
 			if (!res.ok) return;
 			const { photos } = await res.json();
 			(photos as { filename: string; tags: string[] }[]).forEach(p => {
