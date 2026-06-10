@@ -67,6 +67,11 @@ if (row.length) {
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Orbitron:wght@500;700&family=Great+Vibes&display=swap" rel="stylesheet" />
 		<title>Orbit Dust</title>
+		<script is:inline>
+			if ('serviceWorker' in navigator) {
+				navigator.serviceWorker.register('/sw.js').catch(() => {});
+			}
+		</script>
 	</head>
 	<body>
 
@@ -315,7 +320,7 @@ if (row.length) {
 			if (img.dataset.srcset) img.srcset = img.dataset.srcset;
 			lazyObs.unobserve(img);
 		});
-	}, { rootMargin: '400px 0px' });
+	}, { rootMargin: '800px 0px' });
 
 	galleryItems.forEach(item => {
 		const img = item.querySelector('img');
