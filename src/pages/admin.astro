@@ -247,23 +247,24 @@
 
   .empty-msg { color: #555; font-size: 11px; letter-spacing: 1px; padding: 1rem; text-align: center; }
 
-  .photo-item {
+  :global(.photo-item) {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.4rem 0.5rem;
+    padding: 0.4rem 0.75rem;
     cursor: default;
-    border: 1px solid transparent;
+    border-left: 2px solid transparent;
     transition: border-color 0.15s, background 0.15s;
-    border-radius: 1px;
     user-select: none;
   }
-  .photo-item:hover { background: #1a1a1a; }
-  .photo-item.selected { border-color: #c9a84c; background: rgba(201,168,76,0.08); }
+  :global(.photo-item *) { cursor: default; user-select: none; }
+  :global(.photo-item:hover) { background: #1e1e1e; }
+  :global(.photo-item.selected) {
+    border-left-color: #c9a84c;
+    background: rgba(201,168,76,0.12);
+  }
 
-  .photo-name { cursor: default; }
-
-  .photo-name {
+  :global(.photo-name) {
     font-size: 10px;
     letter-spacing: 0.5px;
     color: #aaa;
@@ -273,7 +274,7 @@
     min-width: 0;
     flex: 1;
   }
-  .photo-item.selected .photo-name { color: #c9a84c; }
+  :global(.photo-item.selected .photo-name) { color: #c9a84c; }
 
   /* ── Center panel ── */
   .preview-pane {
