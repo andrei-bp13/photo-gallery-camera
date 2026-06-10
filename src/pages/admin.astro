@@ -90,6 +90,7 @@
       <button id="btn-load-new"  class="action-btn">LOAD NEW</button>
       <button id="btn-delete"    class="action-btn action-btn--danger" disabled>DELETE SELECTED</button>
       <button id="btn-publish"   class="action-btn action-btn--publish" disabled>PUBLISH NEW</button>
+      <button id="btn-refresh"   class="action-btn action-btn--refresh">CLEAR CACHE + REFRESH DATABASE</button>
       <input id="file-input" type="file" multiple accept="image/*" style="display:none" />
 
       <div id="publish-progress" class="publish-progress hidden">
@@ -402,6 +403,15 @@
 
   .action-btn--publish { margin-top: 0.5rem; }
 
+  .action-btn--refresh {
+    margin-top: 0.5rem;
+    border-color: #3a5a7a;
+    color: #7aa8d0;
+    font-size: 9px;
+    line-height: 1.4;
+  }
+  .action-btn--refresh:hover:not(:disabled) { background: #3a5a7a; color: #f2f2f2; }
+
   /* ── Progress ── */
   .publish-progress { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
   .publish-progress.hidden { display: none; }
@@ -444,6 +454,7 @@ const btnSaveTags    = document.getElementById('btn-save-tags');
 const btnLoadNew     = document.getElementById('btn-load-new');
 const btnDelete      = document.getElementById('btn-delete');
 const btnPublish     = document.getElementById('btn-publish');
+const btnRefresh     = document.getElementById('btn-refresh');
 const fileInput      = document.getElementById('file-input');
 const publishProgress = document.getElementById('publish-progress');
 const progressLabel  = document.getElementById('progress-label');
@@ -663,6 +674,8 @@ btnDelete.addEventListener('click', async () => {
     tagCheckboxes.forEach(cb => { cb.checked = false; });
     renderList();
     showToast('Photo deleted');
+    // Keep the public gallery in sync so the deleted photo stops showing.
+    await refreshGallery(true);
   } catch {
     showToast('Failed to delete photo', true);
   }
@@ -807,7 +820,39 @@ btnPublish.addEventListener('click', async () => {
   } else {
     showToast(`Published ${done} photo(s)`);
   }
+
+  // Push the newly-published photos to the public gallery immediately.
+  if (done > 0) await refreshGallery(true);
 });
+
+// ── Clear cache + refresh database ──────────────────────────────────────────
+// Regenerates the public gallery snapshot from the current D1 state (so deleted
+// photos disappear and new ones / tag edits appear on the frontpage), then clears
+// this browser's cached images so nothing stale is served back.
+async function refreshGallery(silent = false) {
+  const original = btnRefresh.textContent;
+  btnRefresh.disabled = true;
+  btnRefresh.textContent = 'REFRESHING…';
+  try {
+    const res = await fetch('/api/refresh-gallery', { method: 'POST' });
+    if (!res.ok) throw new Error(await res.text());
+    const { count } = await res.json();
+    // Clear the service-worker image cache so deleted/updated images aren't served stale.
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    showToast(`Gallery refreshed — ${count} photo(s) live`);
+  } catch (err) {
+    console.error(err);
+    if (!silent) showToast('Refresh failed', true);
+  } finally {
+    btnRefresh.textContent = original;
+    btnRefresh.disabled = false;
+  }
+}
+
+btnRefresh.addEventListener('click', () => refreshGallery());
 
 // ── Logout ─────────────────────────────────────────────────────────────────
 document.getElementById('btn-logout').addEventListener('click', async () => {

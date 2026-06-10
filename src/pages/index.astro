@@ -22,9 +22,10 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 const gallery = shuffle(sized);
-// Slideshow keeps both the small thumbnail (shown in the tiny camera LCD) and the
-// full-size URL as a fallback for older photos that have no _thumb variant yet.
-const slideshow = sized.filter((p) => p.landscape).map((p) => ({ thumb: p.thumbSrc, full: p.slideSrc }));
+// Slideshow: all landscape photos in randomized order. Keeps both the small
+// thumbnail (shown in the tiny camera LCD) and the full-size URL as a fallback
+// for older photos that have no _thumb variant yet.
+const slideshow = shuffle(sized.filter((p) => p.landscape)).map((p) => ({ thumb: p.thumbSrc, full: p.slideSrc }));
 
 // Group into rows: a landscape photo takes the space of two portraits,
 // so each row holds either 4 portraits, or 2 portraits + 1 landscape.
@@ -308,25 +309,27 @@ if (row.length) {
 	// non-random buttons in DOM order (left → right, excluding die)
 	const regularBtns = filterBtns.filter(b => b.dataset.tag !== "random");
 
-	// filename → string[] (loaded async from D1)
+	// filename → string[] (loaded from the gallery snapshot / D1)
 	const tagMap = new Map<string, string[]>();
 	let tagsLoaded = false;
 
-	(async () => {
-		try {
-			const res = await fetch("/api/tags");
-			if (!res.ok) return;
-			const { photos } = await res.json();
-			(photos as { filename: string; tags: string[] }[]).forEach(p => {
-				tagMap.set(p.filename, p.tags || []);
-			});
-			tagsLoaded = true;
-		} catch {}
-	})();
-
 	// ── Gallery items ─────────────────────────────────────────────────────────
-	const galleryItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".grid-item"));
+	let galleryItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".grid-item"));
+	let photoSrcs: string[] = [];
 	const gallerySection = document.querySelector<HTMLElement>(".gallery")!;
+
+	const R2_BASE = "https://pub-0d81359dcf6343cba33754dd0dad97fc.r2.dev";
+	const r2 = (name: string) => `${R2_BASE}/${encodeURIComponent(name)}`;
+	const r2thumb = (name: string) => `${R2_BASE}/${encodeURIComponent(name.replace('.webp', '_thumb.webp'))}`;
+
+	function clientShuffle<T>(arr: T[]): T[] {
+		const out = [...arr];
+		for (let i = out.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[out[i], out[j]] = [out[j], out[i]];
+		}
+		return out;
+	}
 
 	// ── Lazy-load via IntersectionObserver (avoids browser evicting images on scroll) ──
 	const lazyObs = new IntersectionObserver((entries) => {
@@ -338,11 +341,6 @@ if (row.length) {
 			lazyObs.unobserve(img);
 		});
 	}, { rootMargin: '800px 0px' });
-
-	galleryItems.forEach(item => {
-		const img = item.querySelector('img');
-		if (img) lazyObs.observe(img);
-	});
 
 	// ── Reveal animation: fade + slide-up each item as it scrolls into view ──
 	// Triggers at the actual viewport (not 800px ahead like the loader), waits for
@@ -372,7 +370,57 @@ if (row.length) {
 		});
 	}, { rootMargin: '0px 0px -5% 0px', threshold: 0.01 });
 
-	galleryItems.forEach(item => revealObs.observe(item));
+	// Build a gallery grid-item button from a snapshot entry { name, landscape }.
+	function buildGridItem(photo: { name: string; landscape: boolean }): HTMLButtonElement {
+		const btn = document.createElement("button");
+		btn.className = `grid-item ${photo.landscape ? "landscape" : "portrait"}`;
+		btn.dataset.full = r2(photo.name);
+		btn.dataset.filename = photo.name;
+		const img = document.createElement("img");
+		img.src = "";
+		img.dataset.src = r2(photo.name);
+		img.dataset.srcset = `${r2thumb(photo.name)} 600w, ${r2(photo.name)} 2400w`;
+		img.sizes = "(max-width: 640px) 50vw, 300px";
+		img.width = photo.landscape ? 800 : 600;
+		img.height = photo.landscape ? 450 : 800;
+		img.alt = "";
+		img.draggable = false;
+		img.setAttribute("onerror", "this.srcset=''");
+		img.setAttribute("oncontextmenu", "return false");
+		img.setAttribute("ondragstart", "return false");
+		btn.appendChild(img);
+		return btn;
+	}
+
+	// (Re)bind lazy-load + reveal + lightbox click to the current galleryItems and
+	// rebuild the photoSrcs index. Runs on first load and after a snapshot refresh.
+	function wireGalleryItems() {
+		photoSrcs = galleryItems.map((item) => item.dataset.full ?? "");
+		galleryItems.forEach((item, i) => {
+			const img = item.querySelector("img");
+			if (img) lazyObs.observe(img);
+			revealObs.observe(item);
+			item.addEventListener("click", () => show(i));
+		});
+	}
+
+	// Replace the whole gallery with photos from the live snapshot, preserving the
+	// row layout + reveal animation. Keeps the currently-active filter applied.
+	function rebuildGallery(photos: { name: string; landscape: boolean; tags: string[] }[]) {
+		tagMap.clear();
+		photos.forEach(p => tagMap.set(p.name, p.tags || []));
+		tagsLoaded = true;
+		galleryItems.forEach(item => {
+			const img = item.querySelector("img");
+			if (img) lazyObs.unobserve(img);
+			revealObs.unobserve(item);
+		});
+		galleryItems = clientShuffle(photos).map(buildGridItem);
+		wireGalleryItems();
+		const active = filterBtns.find(b => b.classList.contains("active"));
+		const tag = active && active.dataset.tag !== "random" ? (active.dataset.tag ?? "all") : "all";
+		applyFilter(tag);
+	}
 
 	function packIntoRows(items: HTMLButtonElement[]) {
 		const result: { items: HTMLButtonElement[]; cols: number }[] = [];
@@ -600,7 +648,6 @@ if (row.length) {
 	const prevBtn = document.getElementById("lightbox-prev") as HTMLButtonElement;
 	const nextBtn = document.getElementById("lightbox-next") as HTMLButtonElement;
 
-	const photoSrcs = galleryItems.map((item) => item.dataset.full ?? "");
 	let currentIndex = 0;
 
 	function show(index: number) {
@@ -614,9 +661,8 @@ if (row.length) {
 		lightboxImg.src = "";
 	}
 
-	galleryItems.forEach((item, i) => {
-		item.addEventListener("click", () => show(i));
-	});
+	// Initial wiring against the static (SSR) gallery; replaced if a snapshot loads.
+	wireGalleryItems();
 
 	prevBtn.addEventListener("click", (e) => {
 		e.stopPropagation();
@@ -637,52 +683,122 @@ if (row.length) {
 	});
 
 	// Slideshow: blurred -> AF brackets blink (focusing) -> snap sharp -> hold -> fade out
-	const slides = Array.from(document.querySelectorAll<HTMLDivElement>("#camera-screen .slide"));
+	const cameraScreen = document.getElementById("camera-screen");
+	const SLIDE_TIMINGS = { blurHold: 500, focusing: 550, sharpHold: 1300, fadeOut: 350 };
+	let slideGen = 0;   // bumped on each (re)start to stop any prior recursive chain
 
 	// Just-in-time image loading: only the visible + next slide are fetched, instead of
-	// all ~49 landscape images at once on page load. The blur + AF-square effects are
-	// pure CSS on the slide element, so deferring the image src does not affect them.
-	function loadSlide(i: number) {
+	// all landscape images at once on page load. The blur + AF-square effects are pure
+	// CSS on the slide element, so deferring the image src does not affect them.
+	function loadSlide(slides: HTMLDivElement[], i: number) {
 		const img = slides[i]?.querySelector("img");
 		if (img && !img.getAttribute("src") && img.dataset.thumb) {
 			img.src = img.dataset.thumb;
 		}
 	}
 
-	if (slides.length) {
+	function startSlideshow() {
+		if (!cameraScreen) return;
+		const slides = Array.from(cameraScreen.querySelectorAll<HTMLDivElement>(".slide"));
+		if (!slides.length) return;
+		const gen = ++slideGen;
 		let current = 0;
-		const TIMINGS = { blurHold: 500, focusing: 550, sharpHold: 1300, fadeOut: 350 };
 
-		loadSlide(0);
-		loadSlide(1 % slides.length);
+		loadSlide(slides, 0);
+		loadSlide(slides, 1 % slides.length);
 
 		function runSlide(el: HTMLDivElement) {
+			if (gen !== slideGen) return;
 			el.classList.remove("sharp", "focusing");
 			el.classList.add("active");
 			// preload the next image now (~2.7s before it's shown), so it's ready in time
-			loadSlide((current + 1) % slides.length);
+			loadSlide(slides, (current + 1) % slides.length);
 			// phase 1: shows up blurred
 			setTimeout(() => {
+				if (gen !== slideGen) return;
 				// phase 2: AF brackets blink while "focusing"
 				el.classList.add("focusing");
 				setTimeout(() => {
+					if (gen !== slideGen) return;
 					// phase 3: focus snaps — brackets gone, image sharpens (the "shutter" moment)
 					el.classList.remove("focusing");
 					el.classList.add("sharp");
 					setTimeout(() => {
+						if (gen !== slideGen) return;
 						// phase 4: fade out, move to next
 						el.classList.remove("active");
 						setTimeout(() => {
+							if (gen !== slideGen) return;
 							current = (current + 1) % slides.length;
 							runSlide(slides[current]);
-						}, TIMINGS.fadeOut);
-					}, TIMINGS.sharpHold);
-				}, TIMINGS.focusing);
-			}, TIMINGS.blurHold);
+						}, SLIDE_TIMINGS.fadeOut);
+					}, SLIDE_TIMINGS.sharpHold);
+				}, SLIDE_TIMINGS.focusing);
+			}, SLIDE_TIMINGS.blurHold);
 		}
 
 		runSlide(slides[current]);
 	}
+
+	// Rebuild the camera slides from the live snapshot's landscape photos (randomized).
+	function rebuildSlideshow(srcs: { thumb: string; full: string }[]) {
+		if (!cameraScreen) return;
+		const frag = document.createDocumentFragment();
+		srcs.forEach((s, i) => {
+			const slide = document.createElement("div");
+			slide.className = "slide";
+			slide.dataset.index = String(i);
+			const img = document.createElement("img");
+			img.dataset.thumb = s.thumb;
+			img.dataset.full = s.full;
+			img.alt = "";
+			img.draggable = false;
+			img.setAttribute("onerror", "if(this.dataset.full){var f=this.dataset.full;this.dataset.full='';this.src=f}");
+			img.setAttribute("oncontextmenu", "return false");
+			img.setAttribute("ondragstart", "return false");
+			const afGrid = document.createElement("span");
+			afGrid.className = "af-grid";
+			for (let k = 0; k < 9; k++) {
+				const cell = document.createElement("span");
+				cell.className = "af-cell";
+				afGrid.appendChild(cell);
+			}
+			slide.appendChild(img);
+			slide.appendChild(afGrid);
+			frag.appendChild(slide);
+		});
+		cameraScreen.replaceChildren(frag);
+		startSlideshow();
+	}
+
+	startSlideshow();
+
+	// ── Sync gallery + slideshow with the live snapshot (regenerated by the admin
+	//    "Clear cache + refresh database" button). Falls back to the static build. ──
+	(async () => {
+		try {
+			const res = await fetch("/api/gallery", { cache: "no-cache" });
+			if (res.ok) {
+				const photos = await res.json() as { name: string; landscape: boolean; tags: string[] }[];
+				if (Array.isArray(photos) && photos.length) {
+					rebuildGallery(photos);
+					rebuildSlideshow(
+						clientShuffle(photos.filter(p => p.landscape))
+							.map(p => ({ thumb: r2thumb(p.name), full: r2(p.name) }))
+					);
+					return;
+				}
+			}
+		} catch {}
+		// No snapshot yet — keep the static build, just load tags so filtering works.
+		try {
+			const res = await fetch("/api/tags");
+			if (!res.ok) return;
+			const { photos } = await res.json();
+			(photos as { filename: string; tags: string[] }[]).forEach(p => tagMap.set(p.filename, p.tags || []));
+			tagsLoaded = true;
+		} catch {}
+	})();
 </script>
 
 <style is:global>
