@@ -654,6 +654,15 @@ if (row.length) rows.push({ items: row, cols: used });
 			width: 24px;
 			height: 24px;
 		}
+		.lightbox img {
+			max-width: 78vw;
+		}
+		.lightbox-nav.prev {
+			left: 0.5rem;
+		}
+		.lightbox-nav.next {
+			right: 0.5rem;
+		}
 	}
 
 	/* --- Camera + slideshow --- */
@@ -665,7 +674,8 @@ if (row.length) rows.push({ items: row, cols: used });
 	}
 	.camera {
 		position: relative;
-		width: min(90vw, 720px);
+		width: 100%;
+		max-width: 720px;
 	}
 	.camera-outline {
 		display: block;
