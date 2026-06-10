@@ -321,6 +321,35 @@ if (row.length) rows.push({ items: row, cols: used });
 
 	function randomFace() { return Math.floor(Math.random() * 6); }
 
+	// ── Icon hover: finish animation cycle before stopping ───────────────────
+	const ANIM_SENTINEL: Record<string, string> = {
+		all:       'rect',
+		people:    '.wave-arm',
+		streetart: '.spray-lines',
+		nature:    'path',
+		animals:   '.cat-head',
+		objects:   '.diamond-path',
+		buildings: '.w1',
+	};
+	regularBtns.forEach(btn => {
+		const tag = btn.dataset.tag ?? '';
+		const sel = ANIM_SENTINEL[tag];
+		if (!sel) return;
+		const sentinel = btn.querySelector(sel) as Element | null;
+		let hovered = false;
+		btn.addEventListener('mouseenter', () => {
+			hovered = true;
+			btn.classList.add('playing');
+		});
+		btn.addEventListener('mouseleave', () => {
+			hovered = false;
+			// leave .playing on — the animationiteration listener removes it at cycle end
+		});
+		sentinel?.addEventListener('animationiteration', () => {
+			if (!hovered) btn.classList.remove('playing');
+		});
+	});
+
 	// ── Die animation ─────────────────────────────────────────────────────────
 	let dieRunning = false;
 
@@ -335,48 +364,48 @@ if (row.length) rows.push({ items: row, cols: used });
 		if (dieRunning) return;
 		dieRunning = true;
 
-		const N = 20 + Math.floor(Math.random() * 11); // 20–30
+		const N = 50;
+		// Ease-out delay: fast at start (~40ms), slow at end (~450ms)
+		const spinDelay = (i: number) => Math.round(40 + 410 * Math.pow(i / (N - 1), 2));
+
 		setOnlyActive(dieBtn);
 
-		// ── Phase 1: main bounce ──────────────────────────────────────────────
-		let bounceIdx = 0;
+		// ── Phase 1: ping-pong bounce across regularBtns ─────────────────────
+		let pos = 0;
+		let dir = 1;
 		for (let i = 0; i < N; i++) {
-			const btn = regularBtns[bounceIdx % regularBtns.length];
 			filterBtns.forEach(b => { if (b !== dieBtn) b.classList.remove("active"); });
-			btn.classList.add("active");
+			regularBtns[pos].classList.add("active");
 			dieBtn.classList.add("active");
 			setDieFace(randomFace());
-			await sleep(200 + i * 10);
-			bounceIdx++;
+			await sleep(spinDelay(i));
+			pos += dir;
+			if (pos >= regularBtns.length) { pos -= 2; dir = -1; }
+			else if (pos < 0) { pos = 1; dir = 1; }
 		}
 
 		// ── Phase 2: closing sweep — die → all ───────────────────────────────
-		// Sweep LEFT through regularBtns in reverse order (buildings→…→all), starting from die
 		const SWEEP_DELAY = 80;
-
-		// Highlight die as sweep start
 		filterBtns.forEach(b => b.classList.remove("active"));
 		dieBtn.classList.add("active");
 		await sleep(SWEEP_DELAY);
 
-		const reversed = [...regularBtns].reverse(); // buildings, objects, animals, nature, streetart, people, all
-		for (const btn of reversed) {
+		for (const btn of [...regularBtns].reverse()) {
 			filterBtns.forEach(b => b.classList.remove("active"));
 			btn.classList.add("active");
 			await sleep(SWEEP_DELAY);
 		}
 
 		// ── Phase 3: closing sweep — all → buildings (no die) ────────────────
-		for (const btn of regularBtns) { // all, people, streetart, nature, animals, objects, buildings
+		for (const btn of regularBtns) {
 			filterBtns.forEach(b => b.classList.remove("active"));
 			btn.classList.add("active");
 			await sleep(SWEEP_DELAY);
 		}
 
-		// ── End: deselect die, activate "all" ────────────────────────────────
+		// ── End: activate "all" ───────────────────────────────────────────────
 		filterBtns.forEach(b => b.classList.remove("active"));
-		const allBtn = filterBtns.find(b => b.dataset.tag === "all")!;
-		allBtn.classList.add("active");
+		filterBtns.find(b => b.dataset.tag === "all")!.classList.add("active");
 		applyFilter("all");
 		dieRunning = false;
 	}
@@ -731,7 +760,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		transform-box: fill-box;
 		transform-origin: center;
 	}
-	:global(.filter-btn[data-tag="all"]:hover svg rect) { animation-play-state: running; }
+	:global(.filter-btn[data-tag="all"].playing svg rect) { animation-play-state: running; }
 	:global(.filter-btn[data-tag="all"] svg rect:nth-child(1)) { --dx: -2.5px; --dy: -2.5px; }
 	:global(.filter-btn[data-tag="all"] svg rect:nth-child(2)) { --dx: 2.5px; --dy: -2.5px; }
 	:global(.filter-btn[data-tag="all"] svg rect:nth-child(3)) { --dx: -2.5px; --dy: 2.5px; }
@@ -748,7 +777,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		transform-box: fill-box;
 		transform-origin: 0% 0%;
 	}
-	:global(.filter-btn[data-tag="people"]:hover .wave-arm) { animation-play-state: running; }
+	:global(.filter-btn[data-tag="people"].playing .wave-arm) { animation-play-state: running; }
 	@keyframes wave-arm {
 		0%, 33%, 100% { transform: rotate(0deg); }
 		8%            { transform: rotate(-65deg); }
@@ -761,7 +790,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		animation: spray-out 1.5s ease-in-out infinite;
 		animation-play-state: paused;
 	}
-	:global(.filter-btn[data-tag="streetart"]:hover .spray-lines) { animation-play-state: running; }
+	:global(.filter-btn[data-tag="streetart"].playing .spray-lines) { animation-play-state: running; }
 	@keyframes spray-out {
 		0%, 10%, 20%, 33%, 100% { transform: translateX(0); opacity: 1; }
 		5%  { transform: translateX(-4px); opacity: 0.1; }
@@ -776,7 +805,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		transform-box: fill-box;
 		transform-origin: bottom center;
 	}
-	:global(.filter-btn[data-tag="nature"]:hover svg path) { animation-play-state: running; }
+	:global(.filter-btn[data-tag="nature"].playing svg path) { animation-play-state: running; }
 	@keyframes tree-sway {
 		0%, 33%, 100% { transform: rotate(0deg); }
 		5%            { transform: rotate(-7deg); }
@@ -793,7 +822,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		transform-box: fill-box;
 		transform-origin: bottom center;
 	}
-	:global(.filter-btn[data-tag="animals"]:hover .cat-head) { animation-play-state: running; }
+	:global(.filter-btn[data-tag="animals"].playing .cat-head) { animation-play-state: running; }
 	@keyframes cat-turn {
 		0%, 33%, 100% { transform: rotate(0deg); }
 		8%            { transform: rotate(-20deg); }
@@ -806,7 +835,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		animation: diamond-fill 1.5s ease-in-out infinite;
 		animation-play-state: paused;
 	}
-	:global(.filter-btn[data-tag="objects"]:hover .diamond-path) { animation-play-state: running; }
+	:global(.filter-btn[data-tag="objects"].playing .diamond-path) { animation-play-state: running; }
 	@keyframes diamond-fill {
 		0%, 33%, 100% { fill: transparent; }
 		5%, 28%       { fill: #c9a84c; }
@@ -818,7 +847,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		transform-box: fill-box;
 		transform-origin: center;
 	}
-	:global(.filter-btn[data-tag="objects"]:hover .sp) { animation-play-state: running; }
+	:global(.filter-btn[data-tag="objects"].playing .sp) { animation-play-state: running; }
 	:global(.filter-btn[data-tag="objects"] .sp1) { animation-delay: 0.06s; }
 	:global(.filter-btn[data-tag="objects"] .sp2) { animation-delay: 0.12s; }
 	:global(.filter-btn[data-tag="objects"] .sp3) { animation-delay: 0.18s; }
@@ -834,7 +863,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		animation: window-on 1.5s ease-in-out infinite;
 		animation-play-state: paused;
 	}
-	:global(.filter-btn[data-tag="buildings"]:hover .w) { animation-play-state: running; }
+	:global(.filter-btn[data-tag="buildings"].playing .w) { animation-play-state: running; }
 	:global(.filter-btn[data-tag="buildings"] .w1)  { animation-delay: 0s; }
 	:global(.filter-btn[data-tag="buildings"] .w2)  { animation-delay: 0.03s; }
 	:global(.filter-btn[data-tag="buildings"] .w3)  { animation-delay: 0.06s; }
