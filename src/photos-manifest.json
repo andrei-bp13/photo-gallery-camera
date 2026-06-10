@@ -1,0 +1,442 @@
+[
+  {
+    "name": "2001.webp",
+    "landscape": true
+  },
+  {
+    "name": "2dudes.webp",
+    "landscape": false
+  },
+  {
+    "name": "2towers.webp",
+    "landscape": false
+  },
+  {
+    "name": "DSC03002.webp",
+    "landscape": false
+  },
+  {
+    "name": "DSC03049.webp",
+    "landscape": true
+  },
+  {
+    "name": "alien.webp",
+    "landscape": true
+  },
+  {
+    "name": "anotherdoor.webp",
+    "landscape": true
+  },
+  {
+    "name": "babydinosaur.webp",
+    "landscape": true
+  },
+  {
+    "name": "babydinosaur2.webp",
+    "landscape": true
+  },
+  {
+    "name": "ball.webp",
+    "landscape": false
+  },
+  {
+    "name": "balls2.webp",
+    "landscape": true
+  },
+  {
+    "name": "bart.webp",
+    "landscape": false
+  },
+  {
+    "name": "beast.webp",
+    "landscape": true
+  },
+  {
+    "name": "bee.webp",
+    "landscape": true
+  },
+  {
+    "name": "birb.webp",
+    "landscape": true
+  },
+  {
+    "name": "birbs.webp",
+    "landscape": false
+  },
+  {
+    "name": "boat.webp",
+    "landscape": false
+  },
+  {
+    "name": "bombeiross.webp",
+    "landscape": true
+  },
+  {
+    "name": "bug.webp",
+    "landscape": false
+  },
+  {
+    "name": "bug2.webp",
+    "landscape": false
+  },
+  {
+    "name": "calm.webp",
+    "landscape": false
+  },
+  {
+    "name": "car.webp",
+    "landscape": true
+  },
+  {
+    "name": "cinderella.webp",
+    "landscape": false
+  },
+  {
+    "name": "cinnamonsun.webp",
+    "landscape": false
+  },
+  {
+    "name": "clock.webp",
+    "landscape": false
+  },
+  {
+    "name": "cone.webp",
+    "landscape": true
+  },
+  {
+    "name": "diagonal.webp",
+    "landscape": false
+  },
+  {
+    "name": "dinoball-.webp",
+    "landscape": false
+  },
+  {
+    "name": "dinosaur.webp",
+    "landscape": false
+  },
+  {
+    "name": "door.jpg.webp",
+    "landscape": false
+  },
+  {
+    "name": "door.webp",
+    "landscape": true
+  },
+  {
+    "name": "duckduckgoose.webp",
+    "landscape": true
+  },
+  {
+    "name": "dude.webp",
+    "landscape": false
+  },
+  {
+    "name": "earth.webp",
+    "landscape": false
+  },
+  {
+    "name": "earth2.webp",
+    "landscape": false
+  },
+  {
+    "name": "earth3.webp",
+    "landscape": true
+  },
+  {
+    "name": "emil.webp",
+    "landscape": true
+  },
+  {
+    "name": "faroo.webp",
+    "landscape": false
+  },
+  {
+    "name": "fat.webp",
+    "landscape": false
+  },
+  {
+    "name": "feature.webp",
+    "landscape": true
+  },
+  {
+    "name": "fence.webp",
+    "landscape": false
+  },
+  {
+    "name": "flower.webp",
+    "landscape": true
+  },
+  {
+    "name": "flowermonster.webp",
+    "landscape": true
+  },
+  {
+    "name": "flying dutchman.webp",
+    "landscape": true
+  },
+  {
+    "name": "fren.webp",
+    "landscape": false
+  },
+  {
+    "name": "ghetto.webp",
+    "landscape": true
+  },
+  {
+    "name": "ginja2.webp",
+    "landscape": true
+  },
+  {
+    "name": "halo.webp",
+    "landscape": false
+  },
+  {
+    "name": "happy.webp",
+    "landscape": false
+  },
+  {
+    "name": "hats.webp",
+    "landscape": true
+  },
+  {
+    "name": "hazy.webp",
+    "landscape": true
+  },
+  {
+    "name": "hikers.webp",
+    "landscape": false
+  },
+  {
+    "name": "hyperspeed.webp",
+    "landscape": true
+  },
+  {
+    "name": "iambecomedeath.webp",
+    "landscape": true
+  },
+  {
+    "name": "icanflyifiwantto.webp",
+    "landscape": false
+  },
+  {
+    "name": "isthatgrass.webp",
+    "landscape": false
+  },
+  {
+    "name": "japaan.webp",
+    "landscape": false
+  },
+  {
+    "name": "je.webp",
+    "landscape": true
+  },
+  {
+    "name": "jupiter.webp",
+    "landscape": true
+  },
+  {
+    "name": "kitty.webp",
+    "landscape": false
+  },
+  {
+    "name": "ladybug.webp",
+    "landscape": false
+  },
+  {
+    "name": "ladybug2.webp",
+    "landscape": false
+  },
+  {
+    "name": "lecomet.webp",
+    "landscape": true
+  },
+  {
+    "name": "lighthouse.webp",
+    "landscape": true
+  },
+  {
+    "name": "lights.webp",
+    "landscape": true
+  },
+  {
+    "name": "lin3s.webp",
+    "landscape": false
+  },
+  {
+    "name": "lines.webp",
+    "landscape": false
+  },
+  {
+    "name": "moon.webp",
+    "landscape": false
+  },
+  {
+    "name": "mountains.webp",
+    "landscape": true
+  },
+  {
+    "name": "mountains2.webp",
+    "landscape": true
+  },
+  {
+    "name": "mountains3.webp",
+    "landscape": true
+  },
+  {
+    "name": "mountains4.webp",
+    "landscape": false
+  },
+  {
+    "name": "mountains5.webp",
+    "landscape": true
+  },
+  {
+    "name": "mountains6.webp",
+    "landscape": false
+  },
+  {
+    "name": "nene.webp",
+    "landscape": false
+  },
+  {
+    "name": "nomnomnom.webp",
+    "landscape": true
+  },
+  {
+    "name": "pattern.webp",
+    "landscape": false
+  },
+  {
+    "name": "pentaclops.webp",
+    "landscape": false
+  },
+  {
+    "name": "pizza.webp",
+    "landscape": true
+  },
+  {
+    "name": "porto.webp",
+    "landscape": true
+  },
+  {
+    "name": "porto2.webp",
+    "landscape": true
+  },
+  {
+    "name": "purple.webp",
+    "landscape": false
+  },
+  {
+    "name": "pussy.webp",
+    "landscape": false
+  },
+  {
+    "name": "puzzle.webp",
+    "landscape": true
+  },
+  {
+    "name": "randompot.webp",
+    "landscape": true
+  },
+  {
+    "name": "redhat.webp",
+    "landscape": false
+  },
+  {
+    "name": "rockandroll.webp",
+    "landscape": false
+  },
+  {
+    "name": "rocks.webp",
+    "landscape": true
+  },
+  {
+    "name": "sbz.webp",
+    "landscape": false
+  },
+  {
+    "name": "selfie.webp",
+    "landscape": false
+  },
+  {
+    "name": "singer.webp",
+    "landscape": false
+  },
+  {
+    "name": "smile.webp",
+    "landscape": false
+  },
+  {
+    "name": "smile2.webp",
+    "landscape": true
+  },
+  {
+    "name": "sparta.webp",
+    "landscape": false
+  },
+  {
+    "name": "stickers.webp",
+    "landscape": true
+  },
+  {
+    "name": "sulita.webp",
+    "landscape": false
+  },
+  {
+    "name": "sushi.webp",
+    "landscape": false
+  },
+  {
+    "name": "tattoo.webp",
+    "landscape": false
+  },
+  {
+    "name": "tfisthis.webp",
+    "landscape": false
+  },
+  {
+    "name": "the word.webp",
+    "landscape": true
+  },
+  {
+    "name": "tinyflowers.webp",
+    "landscape": false
+  },
+  {
+    "name": "tinyshroom.webp",
+    "landscape": false
+  },
+  {
+    "name": "tongue.webp",
+    "landscape": false
+  },
+  {
+    "name": "trash.webp",
+    "landscape": false
+  },
+  {
+    "name": "veins.webp",
+    "landscape": false
+  },
+  {
+    "name": "weeds.webp",
+    "landscape": true
+  },
+  {
+    "name": "whereyougoing.webp",
+    "landscape": true
+  },
+  {
+    "name": "wimdy.webp",
+    "landscape": true
+  },
+  {
+    "name": "yepitsbroken.webp",
+    "landscape": false
+  },
+  {
+    "name": "you.webp",
+    "landscape": false
+  }
+]
