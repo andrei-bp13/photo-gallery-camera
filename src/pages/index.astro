@@ -388,7 +388,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		dieRunning = true;
 		if (dieHoverInterval !== null) { clearInterval(dieHoverInterval); dieHoverInterval = null; }
 
-		const N = 80;
+		const N = 50 + Math.floor(Math.random() * 11); // 50–60
 		// Ease-out: very fast start (~20ms), slow end (~500ms)
 		const spinDelay = (i: number) => Math.round(20 + 480 * Math.pow(i / (N - 1), 2));
 
@@ -758,7 +758,7 @@ if (row.length) rows.push({ items: row, cols: used });
 		overflow: visible;
 	}
 	.filter-btn:hover svg {
-		transform: scale(1.15);
+		transform: scale(1.25);
 	}
 	.filter-btn .tooltip {
 		position: absolute;
