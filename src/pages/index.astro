@@ -30,11 +30,21 @@ type Row = { items: typeof gallery; cols: number };
 const rows: Row[] = [];
 let row: typeof gallery = [];
 let used = 0;
+let landscapeLeftNext = true;
+function arrangeRow(r: typeof gallery): typeof gallery {
+	const ls = r.filter(p => p.landscape);
+	const ps = r.filter(p => !p.landscape);
+	if (ls.length > 0 && ps.length > 0) {
+		const result = landscapeLeftNext ? [...ls, ...ps] : [...ps, ...ls];
+		landscapeLeftNext = !landscapeLeftNext;
+		return result;
+	}
+	return [...ls, ...ps];
+}
 for (const photo of gallery) {
 	const cost = photo.landscape ? 2 : 1;
 	if (used + cost > 4) {
-		row.sort((a, b) => (b.landscape ? 1 : 0) - (a.landscape ? 1 : 0));
-		rows.push({ items: row, cols: used });
+		rows.push({ items: arrangeRow(row), cols: used });
 		row = [];
 		used = 0;
 	}
@@ -42,8 +52,7 @@ for (const photo of gallery) {
 	used += cost;
 }
 if (row.length) {
-	row.sort((a, b) => (b.landscape ? 1 : 0) - (a.landscape ? 1 : 0));
-	rows.push({ items: row, cols: used });
+	rows.push({ items: arrangeRow(row), cols: used });
 }
 ---
 
@@ -300,6 +309,7 @@ if (row.length) {
 	function packIntoRows(items: HTMLButtonElement[]) {
 		const result: { items: HTMLButtonElement[]; cols: number }[] = [];
 		let i = 0;
+		let lLeft = true;
 		while (i < items.length) {
 			const chunk: HTMLButtonElement[] = [];
 			let cols = 0;
@@ -310,8 +320,16 @@ if (row.length) {
 				cols += cost;
 				i++;
 			}
-			chunk.sort((a, b) => (b.classList.contains("landscape") ? 1 : 0) - (a.classList.contains("landscape") ? 1 : 0));
-			result.push({ items: chunk, cols });
+			const ls = chunk.filter(a => a.classList.contains("landscape"));
+			const ps = chunk.filter(a => !a.classList.contains("landscape"));
+			let arranged: HTMLButtonElement[];
+			if (ls.length > 0 && ps.length > 0) {
+				arranged = lLeft ? [...ls, ...ps] : [...ps, ...ls];
+				lLeft = !lLeft;
+			} else {
+				arranged = [...ls, ...ps];
+			}
+			result.push({ items: arranged, cols });
 		}
 		return result;
 	}
@@ -995,7 +1013,7 @@ if (row.length) {
 		30% { fill: transparent; }
 	}
 
-	.grid-row {
+	:global(.grid-row) {
 		display: grid;
 		grid-template-columns: repeat(var(--cols), 1fr);
 		align-items: center;
