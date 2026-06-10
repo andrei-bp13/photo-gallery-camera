@@ -226,19 +226,17 @@ if (row.length) rows.push({ items: row, cols: used });
 						</svg>
 					</button>
 				</div>
-				{rows.map((r) => (
-					<div class="grid-row" style={`--cols: ${r.cols}`}>
-						{r.items.map((photo) => (
-							<button
-								class:list={["grid-item", photo.landscape ? "landscape" : "portrait"]}
-								data-full={photo.fullSrc}
-								data-filename={photo.name}
-							>
-								<img src={photo.src} alt="" loading="lazy" draggable="false" oncontextmenu="return false" ondragstart="return false" />
-							</button>
-						))}
-					</div>
-				))}
+				<div class="gallery-grid">
+					{gallery.map((photo) => (
+						<button
+							class:list={["grid-item", photo.landscape ? "landscape" : "portrait"]}
+							data-full={photo.fullSrc}
+							data-filename={photo.name}
+						>
+							<img src={photo.src} alt="" loading="lazy" draggable="false" oncontextmenu="return false" ondragstart="return false" />
+						</button>
+					))}
+				</div>
 			</section>
 		</main>
 
@@ -276,22 +274,15 @@ if (row.length) rows.push({ items: row, cols: used });
 
 	// ── Gallery items ─────────────────────────────────────────────────────────
 	const galleryItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".grid-item"));
-	const gridRows = Array.from(document.querySelectorAll<HTMLDivElement>(".grid-row"));
 
 	function applyFilter(tag: string) {
-		if (tag === "all" || !tagsLoaded) {
-			galleryItems.forEach(item => { item.style.display = ""; });
-			gridRows.forEach(row => { row.style.display = ""; });
-			return;
-		}
 		galleryItems.forEach(item => {
-			const tags = tagMap.get(item.dataset.filename ?? "") ?? [];
-			item.style.display = tags.includes(tag) ? "" : "none";
-		});
-		gridRows.forEach(row => {
-			const anyVisible = Array.from(row.querySelectorAll<HTMLButtonElement>(".grid-item"))
-				.some(i => i.style.display !== "none");
-			row.style.display = anyVisible ? "" : "none";
+			if (tag === "all" || !tagsLoaded) {
+				item.style.display = "";
+			} else {
+				const tags = tagMap.get(item.dataset.filename ?? "") ?? [];
+				item.style.display = tags.includes(tag) ? "" : "none";
+			}
 		});
 	}
 
@@ -919,12 +910,11 @@ if (row.length) rows.push({ items: row, cols: used });
 		30% { fill: transparent; }
 	}
 
-	.grid-row {
+	.gallery-grid {
 		display: grid;
-		grid-template-columns: repeat(var(--cols), 1fr);
+		grid-template-columns: repeat(4, 1fr);
 		align-items: center;
 		gap: 1rem;
-		margin-bottom: 1rem;
 	}
 	.grid-item {
 		overflow: hidden;
