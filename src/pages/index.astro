@@ -7,7 +7,7 @@ const R2_BASE = "https://pub-0d81359dcf6343cba33754dd0dad97fc.r2.dev";
 // All images are served from Cloudflare R2.
 const sized = photosManifest.map(({ name, landscape }) => {
 	const url = `${R2_BASE}/${encodeURIComponent(name)}`;
-	return { src: url, slideSrc: url, fullSrc: url, landscape };
+	return { src: url, slideSrc: url, fullSrc: url, landscape, name };
 });
 
 // Shuffle (Fisher-Yates) so the gallery layout is different on every page load.
@@ -122,7 +122,7 @@ if (row.length) rows.push({ items: row, cols: used });
 							<rect x="13" y="13" width="8" height="8" rx="1.5" />
 						</svg>
 					</button>
-					<button class="filter-btn" data-tag="humans" aria-label="filter by: people">
+					<button class="filter-btn" data-tag="people" aria-label="filter by: people">
 						<span class="tooltip">filter by: people</span>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
 							<circle cx="12" cy="5" r="2.4" />
@@ -133,7 +133,7 @@ if (row.length) rows.push({ items: row, cols: used });
 							<line x1="12" y1="15" x2="15.5" y2="21" />
 						</svg>
 					</button>
-					<button class="filter-btn" data-tag="graffiti" aria-label="filter by: streetart">
+					<button class="filter-btn" data-tag="streetart" aria-label="filter by: streetart">
 						<span class="tooltip">filter by: streetart</span>
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 							<rect x="8" y="7" width="8" height="14" rx="2" />
@@ -210,6 +210,7 @@ if (row.length) rows.push({ items: row, cols: used });
 							<button
 								class:list={["grid-item", photo.landscape ? "landscape" : "portrait"]}
 								data-full={photo.fullSrc}
+								data-filename={photo.name}
 							>
 								<img src={photo.src} alt="" loading="lazy" draggable="false" oncontextmenu="return false" ondragstart="return false" />
 							</button>
@@ -229,12 +230,145 @@ if (row.length) rows.push({ items: row, cols: used });
 
 <script>
 
-	// Filter bar: purely visual single-select toggle for now (no actual filtering yet)
+	// ── Filter setup ─────────────────────────────────────────────────────────
 	const filterBtns = Array.from(document.querySelectorAll<HTMLButtonElement>(".filter-btn"));
-	filterBtns.forEach((btn) => {
-		btn.addEventListener("click", () => {
-			filterBtns.forEach((b) => b.classList.remove("active"));
+	const dieBtn = filterBtns.find(b => b.dataset.tag === "random")!;
+	// non-random buttons in DOM order (left → right, excluding die)
+	const regularBtns = filterBtns.filter(b => b.dataset.tag !== "random");
+
+	// filename → string[] (loaded async from D1)
+	const tagMap = new Map<string, string[]>();
+	let tagsLoaded = false;
+
+	(async () => {
+		try {
+			const res = await fetch("/api/photos?status=current");
+			if (!res.ok) return;
+			const { photos } = await res.json();
+			(photos as { filename: string; tags: string[] }[]).forEach(p => {
+				tagMap.set(p.filename, p.tags || []);
+			});
+			tagsLoaded = true;
+		} catch {}
+	})();
+
+	// ── Gallery items ─────────────────────────────────────────────────────────
+	const galleryItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".grid-item"));
+	const gridRows = Array.from(document.querySelectorAll<HTMLDivElement>(".grid-row"));
+
+	function applyFilter(tag: string) {
+		if (tag === "all" || !tagsLoaded) {
+			galleryItems.forEach(item => { item.style.display = ""; });
+			gridRows.forEach(row => { row.style.display = ""; });
+			return;
+		}
+		galleryItems.forEach(item => {
+			const tags = tagMap.get(item.dataset.filename ?? "") ?? [];
+			item.style.display = tags.includes(tag) ? "" : "none";
+		});
+		gridRows.forEach(row => {
+			const anyVisible = Array.from(row.querySelectorAll<HTMLButtonElement>(".grid-item"))
+				.some(i => i.style.display !== "none");
+			row.style.display = anyVisible ? "" : "none";
+		});
+	}
+
+	// ── Die face definitions ──────────────────────────────────────────────────
+	const DIE_FACES: [number, number][][] = [
+		[[12, 12]],
+		[[8.5, 8.5], [15.5, 15.5]],
+		[[8.5, 8.5], [12, 12], [15.5, 15.5]],
+		[[8.5, 8.5], [15.5, 8.5], [8.5, 15.5], [15.5, 15.5]],
+		[[8.5, 8.5], [15.5, 8.5], [12, 12], [8.5, 15.5], [15.5, 15.5]],
+		[[8.5, 8], [15.5, 8], [8.5, 12], [15.5, 12], [8.5, 16], [15.5, 16]],
+	];
+
+	function setDieFace(face: number) {
+		const svg = dieBtn.querySelector("svg")!;
+		svg.querySelectorAll("circle").forEach(c => c.remove());
+		DIE_FACES[face].forEach(([cx, cy]) => {
+			const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+			c.setAttribute("cx", String(cx));
+			c.setAttribute("cy", String(cy));
+			c.setAttribute("r", "1.1");
+			c.setAttribute("fill", "currentColor");
+			c.setAttribute("stroke", "none");
+			svg.appendChild(c);
+		});
+	}
+
+	function randomFace() { return Math.floor(Math.random() * 6); }
+
+	// ── Die animation ─────────────────────────────────────────────────────────
+	let dieRunning = false;
+
+	function sleep(ms: number) { return new Promise<void>(r => setTimeout(r, ms)); }
+
+	function setOnlyActive(btn: HTMLButtonElement | null) {
+		filterBtns.forEach(b => b.classList.remove("active"));
+		btn?.classList.add("active");
+	}
+
+	async function runDieAnimation() {
+		if (dieRunning) return;
+		dieRunning = true;
+
+		const N = 20 + Math.floor(Math.random() * 11); // 20–30
+		setOnlyActive(dieBtn);
+
+		// ── Phase 1: main bounce ──────────────────────────────────────────────
+		let bounceIdx = 0;
+		for (let i = 0; i < N; i++) {
+			const btn = regularBtns[bounceIdx % regularBtns.length];
+			filterBtns.forEach(b => { if (b !== dieBtn) b.classList.remove("active"); });
 			btn.classList.add("active");
+			dieBtn.classList.add("active");
+			setDieFace(randomFace());
+			await sleep(200 + i * 10);
+			bounceIdx++;
+		}
+
+		// ── Phase 2: closing sweep — die → all ───────────────────────────────
+		// Sweep LEFT through regularBtns in reverse order (buildings→…→all), starting from die
+		const SWEEP_DELAY = 80;
+
+		// Highlight die as sweep start
+		filterBtns.forEach(b => b.classList.remove("active"));
+		dieBtn.classList.add("active");
+		await sleep(SWEEP_DELAY);
+
+		const reversed = [...regularBtns].reverse(); // buildings, objects, animals, nature, streetart, people, all
+		for (const btn of reversed) {
+			filterBtns.forEach(b => b.classList.remove("active"));
+			btn.classList.add("active");
+			await sleep(SWEEP_DELAY);
+		}
+
+		// ── Phase 3: closing sweep — all → buildings (no die) ────────────────
+		for (const btn of regularBtns) { // all, people, streetart, nature, animals, objects, buildings
+			filterBtns.forEach(b => b.classList.remove("active"));
+			btn.classList.add("active");
+			await sleep(SWEEP_DELAY);
+		}
+
+		// ── End: deselect die, activate "all" ────────────────────────────────
+		filterBtns.forEach(b => b.classList.remove("active"));
+		const allBtn = filterBtns.find(b => b.dataset.tag === "all")!;
+		allBtn.classList.add("active");
+		applyFilter("all");
+		dieRunning = false;
+	}
+
+	// ── Filter click handlers ─────────────────────────────────────────────────
+	filterBtns.forEach(btn => {
+		btn.addEventListener("click", () => {
+			if (btn.dataset.tag === "random") {
+				runDieAnimation();
+				return;
+			}
+			if (dieRunning) return;
+			setOnlyActive(btn);
+			applyFilter(btn.dataset.tag ?? "all");
 		});
 	});
 
