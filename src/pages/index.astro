@@ -22,7 +22,9 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 const gallery = shuffle(sized);
-const slideshow = sized.filter((p) => p.landscape).map((p) => p.slideSrc);
+// Slideshow keeps both the small thumbnail (shown in the tiny camera LCD) and the
+// full-size URL as a fallback for older photos that have no _thumb variant yet.
+const slideshow = sized.filter((p) => p.landscape).map((p) => ({ thumb: p.thumbSrc, full: p.slideSrc }));
 
 // Group into rows: a landscape photo takes the space of two portraits,
 // so each row holds either 4 portraits, or 2 portraits + 1 landscape.
@@ -63,9 +65,11 @@ if (row.length) {
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Orbitron:wght@500;700&family=Great+Vibes&display=swap" rel="stylesheet" />
+		<!-- Establish the R2 connection early so the first images fetch sooner -->
+		<link rel="preconnect" href="https://pub-0d81359dcf6343cba33754dd0dad97fc.r2.dev" />
+		<!-- Self-hosted fonts (see @font-face below); preload the above-the-fold ones -->
+		<link rel="preload" as="font" type="font/woff2" href="/fonts/orbitron.woff2" crossorigin />
+		<link rel="preload" as="font" type="font/woff2" href="/fonts/greatvibes.woff2" crossorigin />
 		<title>Orbit Dust</title>
 		<script is:inline>
 			if ('serviceWorker' in navigator) {
@@ -118,9 +122,18 @@ if (row.length) {
 				<div class="camera">
 					<img class="camera-outline" src="/camera-outline.png" alt="" draggable="false" oncontextmenu="return false" ondragstart="return false" />
 					<div class="camera-screen" id="camera-screen" oncontextmenu="return false">
-						{slideshow.map((src, i) => (
+						{slideshow.map((s, i) => (
 							<div class="slide" data-index={i}>
-								<img src={src} alt="" loading={i === 0 ? "eager" : "lazy"} draggable="false" oncontextmenu="return false" ondragstart="return false" />
+								<img
+									src={i === 0 ? s.thumb : undefined}
+									data-thumb={s.thumb}
+									data-full={s.full}
+									alt=""
+									draggable="false"
+									onerror="if(this.dataset.full){var f=this.dataset.full;this.dataset.full='';this.src=f}"
+									oncontextmenu="return false"
+									ondragstart="return false"
+								/>
 								<span class="af-grid">
 									{Array.from({ length: 9 }).map(() => <span class="af-cell"></span>)}
 								</span>
@@ -591,13 +604,29 @@ if (row.length) {
 
 	// Slideshow: blurred -> AF brackets blink (focusing) -> snap sharp -> hold -> fade out
 	const slides = Array.from(document.querySelectorAll<HTMLDivElement>("#camera-screen .slide"));
+
+	// Just-in-time image loading: only the visible + next slide are fetched, instead of
+	// all ~49 landscape images at once on page load. The blur + AF-square effects are
+	// pure CSS on the slide element, so deferring the image src does not affect them.
+	function loadSlide(i: number) {
+		const img = slides[i]?.querySelector("img");
+		if (img && !img.getAttribute("src") && img.dataset.thumb) {
+			img.src = img.dataset.thumb;
+		}
+	}
+
 	if (slides.length) {
 		let current = 0;
 		const TIMINGS = { blurHold: 500, focusing: 550, sharpHold: 1300, fadeOut: 350 };
 
+		loadSlide(0);
+		loadSlide(1 % slides.length);
+
 		function runSlide(el: HTMLDivElement) {
 			el.classList.remove("sharp", "focusing");
 			el.classList.add("active");
+			// preload the next image now (~2.7s before it's shown), so it's ready in time
+			loadSlide((current + 1) % slides.length);
 			// phase 1: shows up blurred
 			setTimeout(() => {
 				// phase 2: AF brackets blink while "focusing"
@@ -623,6 +652,22 @@ if (row.length) {
 </script>
 
 <style is:global>
+	/* Self-hosted fonts — same-origin, no render-blocking Google Fonts request */
+	@font-face {
+		font-family: "Orbitron";
+		font-style: normal;
+		font-weight: 400 900;
+		font-display: swap;
+		src: url("/fonts/orbitron.woff2") format("woff2");
+	}
+	@font-face {
+		font-family: "Great Vibes";
+		font-style: normal;
+		font-weight: 400;
+		font-display: swap;
+		src: url("/fonts/greatvibes.woff2") format("woff2");
+	}
+
 	:root {
 		color-scheme: dark;
 		font-family: "Segoe UI", system-ui, sans-serif;
