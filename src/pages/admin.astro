@@ -77,10 +77,11 @@
         <div class="tags-bar">
           {['people','streetart','nature','animals','objects','buildings'].map(tag => (
             <label class="tag-label">
-              <input type="checkbox" class="tag-cb" value={tag} />
+              <input type="checkbox" class="tag-cb" value={tag} disabled />
               {tag}
             </label>
           ))}
+          <button id="btn-save-tags" class="btn-save-tags" disabled>SAVE</button>
         </div>
       </div>
     </main>
@@ -251,13 +252,16 @@
     align-items: center;
     gap: 0.6rem;
     padding: 0.4rem 0.5rem;
-    cursor: pointer;
+    cursor: default;
     border: 1px solid transparent;
     transition: border-color 0.15s, background 0.15s;
     border-radius: 1px;
+    user-select: none;
   }
   .photo-item:hover { background: #1a1a1a; }
-  .photo-item.selected { border-color: #c9a84c; background: rgba(201,168,76,0.06); }
+  .photo-item.selected { border-color: #c9a84c; background: rgba(201,168,76,0.08); }
+
+  .photo-name { cursor: default; }
 
   .photo-name {
     font-size: 10px;
@@ -340,6 +344,26 @@
     clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
   }
   .tag-label:has(.tag-cb:checked) { color: #c9a84c; }
+  .tag-cb:disabled { opacity: 0.35; cursor: default; }
+  .tag-label:has(.tag-cb:disabled) { cursor: default; color: #666; }
+  .tag-label:has(.tag-cb:disabled.tag-cb:checked) { color: rgba(201,168,76,0.5); }
+
+  .btn-save-tags {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid #c9a84c;
+    color: #c9a84c;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    align-self: center;
+  }
+  .btn-save-tags:hover:not(:disabled) { background: #c9a84c; color: #111; }
+  .btn-save-tags:disabled { border-color: #333; color: #444; cursor: not-allowed; }
 
   /* ── Right panel ── */
   .panel-right {
@@ -408,6 +432,7 @@ const previewImg     = document.getElementById('preview-img');
 const noSelection    = document.getElementById('no-selection');
 const tagCheckboxes  = [...document.querySelectorAll('.tag-cb')];
 const btnEditTags    = document.getElementById('btn-edit-tags');
+const btnSaveTags    = document.getElementById('btn-save-tags');
 const btnLoadNew     = document.getElementById('btn-load-new');
 const btnDelete      = document.getElementById('btn-delete');
 const btnPublish     = document.getElementById('btn-publish');
@@ -487,9 +512,11 @@ function selectPhoto(photo) {
   const tags = photo.tags || [];
   tagCheckboxes.forEach(cb => { cb.checked = tags.includes(cb.value); });
 
-  // Buttons
+  // Buttons — tags start locked until Edit Tags is pressed
   btnEditTags.disabled = false;
-  btnDelete.disabled = activeView === 'new'; // can only delete published photos
+  btnSaveTags.disabled = true;
+  tagCheckboxes.forEach(cb => { cb.disabled = true; });
+  btnDelete.disabled = activeView === 'new';
 }
 
 // ── Load photos from D1 ───────────────────────────────────────────────────
@@ -511,8 +538,9 @@ viewToggle.addEventListener('change', () => {
   selectedPhoto = null;
   previewImg.classList.add('hidden');
   noSelection.style.display = '';
-  tagCheckboxes.forEach(cb => { cb.checked = false; });
+  tagCheckboxes.forEach(cb => { cb.checked = false; cb.disabled = true; });
   btnEditTags.disabled = true;
+  btnSaveTags.disabled = true;
   btnDelete.disabled = true;
   btnPublish.disabled = activeView !== 'new' || newPhotos.length === 0;
   renderList();
@@ -568,13 +596,24 @@ fileInput.addEventListener('change', () => {
   showToast(`${accepted.length} file(s) loaded${duplicates.length ? `, ${duplicates.length} duplicate(s) skipped` : ''}`);
 });
 
-// ── Edit Tags ──────────────────────────────────────────────────────────────
-btnEditTags.addEventListener('click', async () => {
+// ── Edit Tags — unlocks checkboxes for editing ─────────────────────────────
+btnEditTags.addEventListener('click', () => {
+  if (!selectedPhoto) return;
+  tagCheckboxes.forEach(cb => { cb.disabled = false; });
+  btnSaveTags.disabled = false;
+  btnEditTags.disabled = true;
+});
+
+// ── Save Tags — persists and re-locks checkboxes ───────────────────────────
+btnSaveTags.addEventListener('click', async () => {
   if (!selectedPhoto) return;
   const tags = tagCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
 
   if (activeView === 'new') {
     selectedPhoto.tags = tags;
+    tagCheckboxes.forEach(cb => { cb.disabled = true; });
+    btnSaveTags.disabled = true;
+    btnEditTags.disabled = false;
     showToast('Tags updated (will be saved on publish)');
     return;
   }
@@ -587,6 +626,9 @@ btnEditTags.addEventListener('click', async () => {
     });
     if (!res.ok) throw new Error();
     selectedPhoto.tags = tags;
+    tagCheckboxes.forEach(cb => { cb.disabled = true; });
+    btnSaveTags.disabled = true;
+    btnEditTags.disabled = false;
     showToast('Tags saved');
   } catch {
     showToast('Failed to save tags', true);
