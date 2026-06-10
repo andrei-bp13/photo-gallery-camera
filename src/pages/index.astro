@@ -11,7 +11,7 @@ const sized = photosManifest.map(({ name, landscape }) => {
 	return { src: url, thumbSrc: thumbUrl, slideSrc: url, fullSrc: url, landscape, name };
 });
 
-// Shuffle (Fisher-Yates) so the gallery layout is different on every page load.
+// Shuffle (Fisher-Yates) — used for the slideshow order.
 function shuffle<T>(arr: T[]): T[] {
 	const out = [...arr];
 	for (let i = out.length - 1; i > 0; i--) {
@@ -21,7 +21,19 @@ function shuffle<T>(arr: T[]): T[] {
 	return out;
 }
 
-const gallery = shuffle(sized);
+// Gallery order: a few hand-picked photos first, then the rest alphabetically.
+const PINNED = ["clock.webp", "earth2.webp", "lecomet.webp", "flower.webp", "ladybug2.webp", "boat.webp"];
+function orderGallery<T extends { name: string }>(items: T[]): T[] {
+	const byName = new Map(items.map((p) => [p.name, p] as const));
+	const pinned = PINNED.map((n) => byName.get(n)).filter((p): p is T => Boolean(p));
+	const pinnedSet = new Set(PINNED);
+	const rest = items
+		.filter((p) => !pinnedSet.has(p.name))
+		.sort((a, b) => a.name.localeCompare(b.name));
+	return [...pinned, ...rest];
+}
+
+const gallery = orderGallery(sized);
 // Slideshow: all landscape photos in randomized order. Keeps both the small
 // thumbnail (shown in the tiny camera LCD) and the full-size URL as a fallback
 // for older photos that have no _thumb variant yet.
@@ -331,6 +343,18 @@ if (row.length) {
 		return out;
 	}
 
+	// Gallery order: a few hand-picked photos first, then the rest alphabetically.
+	const PINNED = ["clock.webp", "earth2.webp", "lecomet.webp", "flower.webp", "ladybug2.webp", "boat.webp"];
+	function orderGallery<T extends { name: string }>(items: T[]): T[] {
+		const byName = new Map(items.map((p) => [p.name, p] as const));
+		const pinned = PINNED.map((n) => byName.get(n)).filter((p): p is T => Boolean(p));
+		const pinnedSet = new Set(PINNED);
+		const rest = items
+			.filter((p) => !pinnedSet.has(p.name))
+			.sort((a, b) => a.name.localeCompare(b.name));
+		return [...pinned, ...rest];
+	}
+
 	// ── Lazy-load via IntersectionObserver (avoids browser evicting images on scroll) ──
 	const lazyObs = new IntersectionObserver((entries) => {
 		entries.forEach(entry => {
@@ -415,7 +439,7 @@ if (row.length) {
 			if (img) lazyObs.unobserve(img);
 			revealObs.unobserve(item);
 		});
-		galleryItems = clientShuffle(photos).map(buildGridItem);
+		galleryItems = orderGallery(photos).map(buildGridItem);
 		wireGalleryItems();
 		const active = filterBtns.find(b => b.classList.contains("active"));
 		const tag = active && active.dataset.tag !== "random" ? (active.dataset.tag ?? "all") : "all";
