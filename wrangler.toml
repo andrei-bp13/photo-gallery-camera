@@ -1,0 +1,12 @@
+name = "photo-gallery"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "orbitdust-db"
+database_id = "47ff916c-b53f-4e68-8723-a556e483edaf"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "orbitdust-photos"

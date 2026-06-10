@@ -4,3 +4,4 @@ dist/
 public/photos/
 public/photos-resized/
 .wrangler/
+.dev.vars

@@ -1,0 +1,183 @@
+---
+---
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>Login — Orbit Dust</title>
+  <link rel="icon" type="image/png" href="/favicon-32.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="brand">
+        <svg viewBox="0 0 48 48" fill="none" aria-hidden="true" class="brand-icon">
+          <ellipse cx="24" cy="25" rx="22" ry="7" stroke="#c9a84c" stroke-width="1" />
+          <circle cx="40" cy="21.5" r="1.5" fill="#c9a84c" />
+          <g fill="#c9a84c">
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(0 24 25)" />
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(60 24 25)" />
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(120 24 25)" />
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(180 24 25)" />
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(240 24 25)" />
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(300 24 25)" />
+          </g>
+        </svg>
+        <span class="brand-text">
+          <span class="brand-orbit">ORBIT</span>
+          <span class="brand-dust">DUST</span>
+        </span>
+      </div>
+
+      <form id="login-form">
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" name="username" type="text" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+        </div>
+        <p class="error-msg" id="error-msg"></p>
+        <button type="submit" id="submit-btn">LOGIN</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const errorMsg = document.getElementById('error-msg');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.textContent = '';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'LOGGING IN…';
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+
+        if (res.ok) {
+          const params = new URLSearchParams(window.location.search);
+          window.location.href = params.get('next') || '/admin';
+        } else {
+          const data = await res.json().catch(() => ({}));
+          errorMsg.textContent = data.error || 'Invalid credentials';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'LOGIN';
+        }
+      } catch {
+        errorMsg.textContent = 'Network error — try again';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'LOGIN';
+      }
+    });
+  </script>
+</body>
+</html>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0;
+    min-height: 100vh;
+    background: #1a1a1a;
+    color: #f2f2f2;
+    font-family: 'Orbitron', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .login-wrap {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 360px;
+    background: #111111;
+    border: 1px solid #333;
+    padding: 2.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  .brand-icon { width: 52px; height: 52px; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-orbit { font-size: 15px; letter-spacing: 4px; color: #c9a84c; font-weight: 700; }
+  .brand-dust  { font-size: 13px; letter-spacing: 7px; color: rgba(201,168,76,0.7); font-weight: 700; }
+
+  form { display: flex; flex-direction: column; gap: 1.25rem; }
+
+  .field { display: flex; flex-direction: column; gap: 0.4rem; }
+
+  label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #888;
+    text-transform: uppercase;
+  }
+
+  input {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #f2f2f2;
+    padding: 0.6rem 0.75rem;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus { border-color: #c9a84c; }
+
+  .error-msg {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #e05555;
+    min-height: 1.2em;
+    text-align: center;
+  }
+
+  button[type="submit"] {
+    background: transparent;
+    border: 1px solid #c9a84c;
+    color: #c9a84c;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  button[type="submit"]:hover:not(:disabled) {
+    background: #c9a84c;
+    color: #111;
+  }
+  button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>

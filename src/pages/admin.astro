@@ -1,0 +1,741 @@
+---
+---
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>Admin — Orbit Dust</title>
+  <link rel="icon" type="image/png" href="/favicon-32.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header class="admin-header">
+    <div class="brand">
+      <a href="/" aria-label="Home">
+        <svg class="brand-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <ellipse cx="24" cy="25" rx="22" ry="7" stroke="#c9a84c" stroke-width="1" />
+          <circle cx="40" cy="21.5" r="1.5" fill="#c9a84c" />
+          <g fill="#c9a84c">
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(0 24 25)" />
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(60 24 25)" />
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(120 24 25)" />
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(180 24 25)" />
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(240 24 25)" />
+            <path d="M 24 10 C 29.5 10.4 33.8 14.3 34.6 19.6 C 29.8 18 25.7 14.6 24 10 Z" transform="rotate(300 24 25)" />
+          </g>
+        </svg>
+      </a>
+      <span class="brand-text">
+        <span class="brand-orbit">ORBIT</span>
+        <span class="brand-dust">DUST</span>
+      </span>
+      <span class="admin-badge">ADMIN</span>
+    </div>
+    <button id="btn-logout" class="logout-btn">LOGOUT</button>
+  </header>
+
+  <!-- ── Toast ── -->
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <!-- ── Confirm dialog ── -->
+  <div id="confirm-overlay" class="confirm-overlay hidden">
+    <div class="confirm-box">
+      <p id="confirm-msg"></p>
+      <div class="confirm-actions">
+        <button id="confirm-cancel" class="btn-outline">CANCEL</button>
+        <button id="confirm-ok" class="btn-gold">CONFIRM</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Three-column layout ── -->
+  <div class="admin-layout">
+
+    <!-- LEFT: Photos List -->
+    <aside class="panel panel-left">
+      <select id="view-toggle" class="view-toggle">
+        <option value="current">Current Photos</option>
+        <option value="new">Newly Added</option>
+      </select>
+      <div id="photos-list" class="photos-list">
+        <p class="empty-msg">Loading…</p>
+      </div>
+    </aside>
+
+    <!-- CENTER: Preview + Tags -->
+    <main class="panel panel-center">
+      <div class="preview-pane">
+        <img id="preview-img" class="preview-img hidden" alt="" draggable="false" />
+        <div id="no-selection" class="no-selection">Select a photo to preview</div>
+      </div>
+      <div class="tags-section">
+        <p class="tags-label">TAGS</p>
+        <div class="tags-bar">
+          {['people','streetart','nature','animals','objects','buildings'].map(tag => (
+            <label class="tag-label">
+              <input type="checkbox" class="tag-cb" value={tag} />
+              {tag}
+            </label>
+          ))}
+        </div>
+      </div>
+    </main>
+
+    <!-- RIGHT: Actions -->
+    <aside class="panel panel-right">
+      <button id="btn-edit-tags" class="action-btn" disabled>EDIT TAGS</button>
+      <button id="btn-load-new"  class="action-btn">LOAD NEW</button>
+      <button id="btn-delete"    class="action-btn action-btn--danger" disabled>DELETE SELECTED</button>
+      <button id="btn-publish"   class="action-btn action-btn--publish" disabled>PUBLISH NEW</button>
+      <input id="file-input" type="file" multiple accept="image/*" style="display:none" />
+
+      <div id="publish-progress" class="publish-progress hidden">
+        <p id="progress-label" class="progress-label">Preparing…</p>
+        <div class="progress-bar-wrap">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+</body>
+</html>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: #1a1a1a;
+    color: #f2f2f2;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  .admin-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    padding: 0 1.5rem;
+    background: #111;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+  }
+  .brand { display: flex; align-items: center; gap: 0.4rem; }
+  .brand a { display: flex; align-items: center; }
+  .brand-icon { width: 44px; height: 44px; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-orbit { font-size: 13px; letter-spacing: 3px; color: #c9a84c; font-weight: 700; }
+  .brand-dust  { font-size: 11px; letter-spacing: 5px; color: rgba(201,168,76,0.7); font-weight: 700; }
+  .admin-badge {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: #111;
+    background: #c9a84c;
+    padding: 2px 6px;
+    margin-left: 0.5rem;
+  }
+  .logout-btn {
+    background: transparent;
+    border: 1px solid #555;
+    color: #888;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .logout-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    border: 1px solid #c9a84c;
+    color: #c9a84c;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 0.6rem 1.5rem;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { border-color: #e05555; color: #e05555; }
+
+  /* ── Confirm dialog ── */
+  .confirm-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200;
+  }
+  .confirm-overlay.hidden { display: none; }
+  .confirm-box {
+    background: #111;
+    border: 1px solid #c9a84c;
+    padding: 2rem;
+    max-width: 360px;
+    width: 90%;
+    display: flex; flex-direction: column; gap: 1.5rem;
+  }
+  #confirm-msg { font-size: 12px; letter-spacing: 1px; line-height: 1.6; color: #ccc; }
+  .confirm-actions { display: flex; gap: 1rem; justify-content: flex-end; }
+
+  /* ── Layout ── */
+  .admin-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr 200px;
+    height: calc(100vh - 56px);
+    overflow: hidden;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid #2a2a2a;
+  }
+  .panel-left  { background: #111; }
+  .panel-center { background: #141414; border-right: 1px solid #2a2a2a; }
+  .panel-right { background: #111; border-right: none; }
+
+  /* ── Left panel ── */
+  .view-toggle {
+    flex-shrink: 0;
+    background: #1a1a1a;
+    border: none;
+    border-bottom: 1px solid #2a2a2a;
+    color: #c9a84c;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    outline: none;
+    width: 100%;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c9a84c'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: calc(100% - 1rem) center;
+  }
+
+  .photos-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .photos-list::-webkit-scrollbar { width: 4px; }
+  .photos-list::-webkit-scrollbar-track { background: #111; }
+  .photos-list::-webkit-scrollbar-thumb { background: #333; }
+
+  .empty-msg { color: #555; font-size: 11px; letter-spacing: 1px; padding: 1rem; text-align: center; }
+
+  .photo-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.5rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: border-color 0.15s, background 0.15s;
+    border-radius: 1px;
+  }
+  .photo-item:hover { background: #1a1a1a; }
+  .photo-item.selected { border-color: #c9a84c; background: rgba(201,168,76,0.06); }
+
+  .thumb {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #222;
+    display: block;
+  }
+  .thumb-placeholder {
+    width: 48px; height: 48px;
+    background: #222;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #444; font-size: 18px;
+  }
+
+  .photo-name {
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: #aaa;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
+  }
+  .photo-item.selected .photo-name { color: #c9a84c; }
+
+  /* ── Center panel ── */
+  .preview-pane {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 0;
+  }
+  .preview-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+    user-select: none;
+  }
+  .preview-img.hidden { display: none; }
+  .no-selection {
+    color: #444;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+
+  .tags-section {
+    flex-shrink: 0;
+    border-top: 1px solid #2a2a2a;
+    padding: 0.75rem 1rem;
+  }
+  .tags-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #555;
+    margin-bottom: 0.6rem;
+  }
+  .tags-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.2rem;
+  }
+  .tag-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #888;
+    cursor: pointer;
+    user-select: none;
+  }
+  .tag-cb {
+    appearance: none;
+    width: 14px; height: 14px;
+    border: 1px solid #444;
+    background: #1a1a1a;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .tag-cb:checked { background: #c9a84c; border-color: #c9a84c; }
+  .tag-cb:checked::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    background: #111;
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  }
+  .tag-label:has(.tag-cb:checked) { color: #c9a84c; }
+
+  /* ── Right panel ── */
+  .panel-right {
+    padding: 1.5rem 1rem;
+    gap: 0.75rem;
+    overflow-y: auto;
+  }
+
+  .action-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid #c9a84c;
+    color: #c9a84c;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 0.7rem 0.5rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    text-align: center;
+  }
+  .action-btn:hover:not(:disabled) { background: #c9a84c; color: #111; }
+  .action-btn:disabled { border-color: #333; color: #444; cursor: not-allowed; }
+
+  .action-btn--danger { border-color: #7a3333; color: #c06060; }
+  .action-btn--danger:hover:not(:disabled) { background: #7a3333; color: #f2f2f2; }
+
+  .action-btn--publish { margin-top: 0.5rem; }
+
+  /* ── Progress ── */
+  .publish-progress { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .publish-progress.hidden { display: none; }
+  .progress-label { font-size: 9px; letter-spacing: 1.5px; color: #888; text-align: center; }
+  .progress-bar-wrap { height: 2px; background: #2a2a2a; }
+  .progress-bar { height: 100%; background: #c9a84c; width: 0%; transition: width 0.3s; }
+
+  /* ── Shared buttons ── */
+  .btn-outline {
+    background: transparent; border: 1px solid #555; color: #888;
+    font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 2px;
+    padding: 0.5rem 1rem; cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-outline:hover { border-color: #888; color: #ccc; }
+  .btn-gold {
+    background: transparent; border: 1px solid #c9a84c; color: #c9a84c;
+    font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 2px;
+    padding: 0.5rem 1rem; cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-gold:hover { background: #c9a84c; color: #111; }
+</style>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let currentPhotos = [];    // from D1
+let newPhotos = [];        // { file, previewUrl, name }
+let selectedPhoto = null;  // { id?, filename, url, tags, landscape, isNew, file? }
+let activeView = 'current';
+
+// ── DOM refs ───────────────────────────────────────────────────────────────
+const viewToggle     = document.getElementById('view-toggle');
+const photosList     = document.getElementById('photos-list');
+const previewImg     = document.getElementById('preview-img');
+const noSelection    = document.getElementById('no-selection');
+const tagCheckboxes  = [...document.querySelectorAll('.tag-cb')];
+const btnEditTags    = document.getElementById('btn-edit-tags');
+const btnLoadNew     = document.getElementById('btn-load-new');
+const btnDelete      = document.getElementById('btn-delete');
+const btnPublish     = document.getElementById('btn-publish');
+const fileInput      = document.getElementById('file-input');
+const publishProgress = document.getElementById('publish-progress');
+const progressLabel  = document.getElementById('progress-label');
+const progressBar    = document.getElementById('progress-bar');
+const toast          = document.getElementById('toast');
+const confirmOverlay = document.getElementById('confirm-overlay');
+const confirmMsg     = document.getElementById('confirm-msg');
+const confirmOk      = document.getElementById('confirm-ok');
+const confirmCancel  = document.getElementById('confirm-cancel');
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, isError = false) {
+  clearTimeout(toastTimer);
+  toast.textContent = msg;
+  toast.className = 'toast show' + (isError ? ' error' : '');
+  toastTimer = setTimeout(() => { toast.className = 'toast'; }, 3000);
+}
+
+// ── Confirm dialog ─────────────────────────────────────────────────────────
+function confirm(msg) {
+  return new Promise(resolve => {
+    confirmMsg.textContent = msg;
+    confirmOverlay.classList.remove('hidden');
+    const done = (result) => {
+      confirmOverlay.classList.add('hidden');
+      confirmOk.removeEventListener('click', onOk);
+      confirmCancel.removeEventListener('click', onCancel);
+      resolve(result);
+    };
+    const onOk = () => done(true);
+    const onCancel = () => done(false);
+    confirmOk.addEventListener('click', onOk);
+    confirmCancel.addEventListener('click', onCancel);
+  });
+}
+
+// ── Render photos list ─────────────────────────────────────────────────────
+function renderList() {
+  photosList.innerHTML = '';
+  const items = activeView === 'current' ? currentPhotos : newPhotos;
+
+  if (items.length === 0) {
+    photosList.innerHTML = `<p class="empty-msg">${activeView === 'current' ? 'No photos yet' : 'No files loaded'}</p>`;
+    return;
+  }
+
+  for (const photo of items) {
+    const item = document.createElement('div');
+    item.className = 'photo-item' + (selectedPhoto === photo ? ' selected' : '');
+    item.dataset.id = photo.id || photo.name;
+
+    const thumb = document.createElement('img');
+    thumb.className = 'thumb';
+    thumb.src = photo.url || photo.previewUrl;
+    thumb.alt = '';
+    thumb.loading = 'lazy';
+    thumb.draggable = false;
+    thumb.onerror = () => { thumb.style.display = 'none'; };
+
+    const name = document.createElement('span');
+    name.className = 'photo-name';
+    name.textContent = photo.filename || photo.name;
+    name.title = photo.filename || photo.name;
+
+    item.append(thumb, name);
+    item.addEventListener('click', () => selectPhoto(photo));
+    photosList.appendChild(item);
+  }
+}
+
+function selectPhoto(photo) {
+  selectedPhoto = photo;
+  renderList();
+
+  // Preview
+  previewImg.classList.remove('hidden');
+  noSelection.style.display = 'none';
+  previewImg.src = photo.url || photo.previewUrl;
+
+  // Tags
+  const tags = photo.tags || [];
+  tagCheckboxes.forEach(cb => { cb.checked = tags.includes(cb.value); });
+
+  // Buttons
+  btnEditTags.disabled = false;
+  btnDelete.disabled = activeView === 'new'; // can only delete published photos
+}
+
+// ── Load photos from D1 ───────────────────────────────────────────────────
+async function loadCurrentPhotos() {
+  try {
+    const res = await fetch('/api/photos?status=current');
+    if (!res.ok) throw new Error();
+    const { photos } = await res.json();
+    currentPhotos = photos;
+    if (activeView === 'current') renderList();
+  } catch {
+    showToast('Failed to load photos', true);
+  }
+}
+
+// ── View toggle ────────────────────────────────────────────────────────────
+viewToggle.addEventListener('change', () => {
+  activeView = viewToggle.value;
+  selectedPhoto = null;
+  previewImg.classList.add('hidden');
+  noSelection.style.display = '';
+  tagCheckboxes.forEach(cb => { cb.checked = false; });
+  btnEditTags.disabled = true;
+  btnDelete.disabled = true;
+  btnPublish.disabled = activeView !== 'new' || newPhotos.length === 0;
+  renderList();
+});
+
+// ── Load New ───────────────────────────────────────────────────────────────
+btnLoadNew.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', () => {
+  const files = [...fileInput.files];
+  if (!files.length) return;
+
+  // Revoke old preview URLs
+  newPhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
+  newPhotos = files.map(file => ({
+    file,
+    name: file.name,
+    filename: file.name,
+    previewUrl: URL.createObjectURL(file),
+    tags: [],
+  }));
+
+  fileInput.value = '';
+  viewToggle.value = 'new';
+  activeView = 'new';
+  selectedPhoto = null;
+  previewImg.classList.add('hidden');
+  noSelection.style.display = '';
+  btnPublish.disabled = false;
+  renderList();
+  showToast(`${files.length} file(s) loaded`);
+});
+
+// ── Edit Tags ──────────────────────────────────────────────────────────────
+btnEditTags.addEventListener('click', async () => {
+  if (!selectedPhoto) return;
+  const tags = tagCheckboxes.filter(cb => cb.checked).map(cb => cb.value);
+
+  if (activeView === 'new') {
+    selectedPhoto.tags = tags;
+    showToast('Tags updated (will be saved on publish)');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/photos', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: selectedPhoto.id, tags }),
+    });
+    if (!res.ok) throw new Error();
+    selectedPhoto.tags = tags;
+    showToast('Tags saved');
+  } catch {
+    showToast('Failed to save tags', true);
+  }
+});
+
+// ── Delete Selected ────────────────────────────────────────────────────────
+btnDelete.addEventListener('click', async () => {
+  if (!selectedPhoto || activeView === 'new') return;
+  const ok = await confirm(`Delete "${selectedPhoto.filename}"?\nThis cannot be undone.`);
+  if (!ok) return;
+
+  try {
+    const res = await fetch(`/api/photos?id=${encodeURIComponent(selectedPhoto.id)}&filename=${encodeURIComponent(selectedPhoto.filename)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error();
+    currentPhotos = currentPhotos.filter(p => p.id !== selectedPhoto.id);
+    selectedPhoto = null;
+    previewImg.classList.add('hidden');
+    noSelection.style.display = '';
+    btnEditTags.disabled = true;
+    btnDelete.disabled = true;
+    tagCheckboxes.forEach(cb => { cb.checked = false; });
+    renderList();
+    showToast('Photo deleted');
+  } catch {
+    showToast('Failed to delete photo', true);
+  }
+});
+
+// ── Image processing (browser-side) ───────────────────────────────────────
+function processImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 2400;
+      let { width, height } = img;
+      const landscape = width >= height;
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+        else { width = Math.round(width * MAX / height); height = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        URL.revokeObjectURL(url);
+        resolve({ blob, landscape });
+      }, 'image/webp', 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
+    img.src = url;
+  });
+}
+
+// ── Publish New ────────────────────────────────────────────────────────────
+btnPublish.addEventListener('click', async () => {
+  if (!newPhotos.length) return;
+
+  const ok = await confirm(`Publish ${newPhotos.length} photo(s) to the gallery?`);
+  if (!ok) return;
+
+  publishProgress.classList.remove('hidden');
+  btnPublish.disabled = true;
+  btnLoadNew.disabled = true;
+
+  let done = 0;
+  const published = [];
+  const failed = [];
+
+  for (const photo of newPhotos) {
+    const idx = newPhotos.indexOf(photo);
+    progressLabel.textContent = `Processing ${idx + 1} / ${newPhotos.length} — ${photo.name}`;
+    progressBar.style.width = `${Math.round((idx / newPhotos.length) * 100)}%`;
+
+    try {
+      const { blob, landscape } = await processImage(photo.file);
+
+      const baseName = photo.name.replace(/\.[^.]+$/, '');
+      const filename = `${baseName}.webp`;
+
+      const fd = new FormData();
+      fd.append('file', blob, filename);
+      fd.append('filename', filename);
+      fd.append('landscape', String(landscape));
+      // Pass tags if set
+      fd.append('tags', JSON.stringify(photo.tags || []));
+
+      const res = await fetch('/api/publish', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(await res.text());
+
+      const { photo: saved } = await res.json();
+      // Save tags if any were set
+      if ((photo.tags || []).length > 0) {
+        await fetch('/api/photos', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: saved.id, tags: photo.tags }),
+        });
+        saved.tags = photo.tags;
+      }
+      published.push(saved);
+      done++;
+    } catch (err) {
+      failed.push(photo.name);
+      console.error(err);
+    }
+  }
+
+  progressBar.style.width = '100%';
+  progressLabel.textContent = 'Done';
+
+  // Clean up
+  newPhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
+  newPhotos = [];
+  currentPhotos = [...published, ...currentPhotos];
+
+  setTimeout(() => {
+    publishProgress.classList.add('hidden');
+    progressBar.style.width = '0%';
+  }, 800);
+
+  viewToggle.value = 'current';
+  activeView = 'current';
+  selectedPhoto = null;
+  previewImg.classList.add('hidden');
+  noSelection.style.display = '';
+  btnPublish.disabled = true;
+  btnLoadNew.disabled = false;
+  renderList();
+
+  if (failed.length) {
+    showToast(`Published ${done}, failed: ${failed.join(', ')}`, true);
+  } else {
+    showToast(`Published ${done} photo(s)`);
+  }
+});
+
+// ── Logout ─────────────────────────────────────────────────────────────────
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  await fetch('/api/auth', { method: 'DELETE' });
+  window.location.href = '/login';
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadCurrentPhotos();
+</script>
