@@ -343,11 +343,20 @@ if (row.length) rows.push({ items: row, cols: used });
 		});
 		btn.addEventListener('mouseleave', () => {
 			hovered = false;
-			// leave .playing on — the animationiteration listener removes it at cycle end
 		});
 		sentinel?.addEventListener('animationiteration', () => {
 			if (!hovered) btn.classList.remove('playing');
 		});
+	});
+
+	// ── Die hover: cycle faces while hovering ────────────────────────────────
+	let dieHoverInterval: ReturnType<typeof setInterval> | null = null;
+	dieBtn.addEventListener('mouseenter', () => {
+		setDieFace(randomFace());
+		dieHoverInterval = setInterval(() => setDieFace(randomFace()), 200);
+	});
+	dieBtn.addEventListener('mouseleave', () => {
+		if (dieHoverInterval !== null) { clearInterval(dieHoverInterval); dieHoverInterval = null; }
 	});
 
 	// ── Die animation ─────────────────────────────────────────────────────────
@@ -360,22 +369,39 @@ if (row.length) rows.push({ items: row, cols: used });
 		btn?.classList.add("active");
 	}
 
+	// Trigger the hover animation for a regular button for one cycle
+	function playIconOnce(btn: HTMLButtonElement) {
+		btn.classList.add('playing');
+		const tag = btn.dataset.tag ?? '';
+		const sel = ANIM_SENTINEL[tag];
+		if (!sel) return;
+		const sentinel = btn.querySelector(sel) as Element | null;
+		const onIteration = () => {
+			btn.classList.remove('playing');
+			sentinel?.removeEventListener('animationiteration', onIteration);
+		};
+		sentinel?.addEventListener('animationiteration', onIteration);
+	}
+
 	async function runDieAnimation() {
 		if (dieRunning) return;
 		dieRunning = true;
+		if (dieHoverInterval !== null) { clearInterval(dieHoverInterval); dieHoverInterval = null; }
 
-		const N = 50;
-		// Ease-out delay: fast at start (~40ms), slow at end (~450ms)
-		const spinDelay = (i: number) => Math.round(40 + 410 * Math.pow(i / (N - 1), 2));
+		const N = 80;
+		// Ease-out: very fast start (~20ms), slow end (~500ms)
+		const spinDelay = (i: number) => Math.round(20 + 480 * Math.pow(i / (N - 1), 2));
 
 		setOnlyActive(dieBtn);
 
-		// ── Phase 1: ping-pong bounce across regularBtns ─────────────────────
+		// ── Phase 1: ping-pong bounce ─────────────────────────────────────────
 		let pos = 0;
 		let dir = 1;
+		let lastBtn = regularBtns[pos];
 		for (let i = 0; i < N; i++) {
 			filterBtns.forEach(b => { if (b !== dieBtn) b.classList.remove("active"); });
-			regularBtns[pos].classList.add("active");
+			lastBtn = regularBtns[pos];
+			lastBtn.classList.add("active");
 			dieBtn.classList.add("active");
 			setDieFace(randomFace());
 			await sleep(spinDelay(i));
@@ -384,7 +410,7 @@ if (row.length) rows.push({ items: row, cols: used });
 			else if (pos < 0) { pos = 1; dir = 1; }
 		}
 
-		// ── Phase 2: closing sweep — die → all ───────────────────────────────
+		// ── Phase 2: closing sweep — die → lastBtn ───────────────────────────
 		const SWEEP_DELAY = 80;
 		filterBtns.forEach(b => b.classList.remove("active"));
 		dieBtn.classList.add("active");
@@ -393,20 +419,24 @@ if (row.length) rows.push({ items: row, cols: used });
 		for (const btn of [...regularBtns].reverse()) {
 			filterBtns.forEach(b => b.classList.remove("active"));
 			btn.classList.add("active");
+			if (btn === lastBtn) break;
 			await sleep(SWEEP_DELAY);
 		}
+		await sleep(SWEEP_DELAY);
 
-		// ── Phase 3: closing sweep — all → buildings (no die) ────────────────
-		for (const btn of regularBtns) {
+		// ── Phase 3: sweep back from lastBtn to all (no die) ─────────────────
+		const lastIdx = regularBtns.indexOf(lastBtn);
+		for (let i = lastIdx; i >= 0; i--) {
 			filterBtns.forEach(b => b.classList.remove("active"));
-			btn.classList.add("active");
+			regularBtns[i].classList.add("active");
 			await sleep(SWEEP_DELAY);
 		}
 
-		// ── End: activate "all" ───────────────────────────────────────────────
+		// ── End: activate selected category, play its icon animation ─────────
 		filterBtns.forEach(b => b.classList.remove("active"));
-		filterBtns.find(b => b.dataset.tag === "all")!.classList.add("active");
-		applyFilter("all");
+		lastBtn.classList.add("active");
+		applyFilter(lastBtn.dataset.tag ?? "all");
+		playIconOnce(lastBtn);
 		dieRunning = false;
 	}
 
