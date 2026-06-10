@@ -710,28 +710,6 @@ if (row.length) {
 			width: 24px;
 			height: 24px;
 		}
-		.lightbox {
-			flex-direction: column;
-			gap: 1.5rem;
-		}
-		.lightbox img {
-			max-width: 95vw;
-			max-height: 75vh;
-		}
-		.lightbox-controls {
-			position: static;
-			pointer-events: all;
-			display: flex;
-			flex-direction: row;
-			gap: 4rem;
-			align-items: center;
-		}
-		.lightbox-nav {
-			position: static;
-			transform: none;
-		}
-		.lightbox-nav.prev { left: auto; }
-		.lightbox-nav.next { right: auto; }
 	}
 
 	/* --- Camera + slideshow --- */
@@ -1122,5 +1100,29 @@ if (row.length) {
 	}
 	.lightbox-nav.next {
 		right: 2rem;
+	}
+	@media (max-width: 640px) {
+		.lightbox {
+			flex-direction: column;
+			gap: 1.5rem;
+		}
+		.lightbox img {
+			max-width: 95vw;
+			max-height: 75vh;
+		}
+		.lightbox-controls {
+			position: static;
+			pointer-events: all;
+			display: flex;
+			flex-direction: row;
+			gap: 4rem;
+			align-items: center;
+		}
+		.lightbox-nav {
+			position: static;
+			transform: none;
+		}
+		.lightbox-nav.prev { left: auto; }
+		.lightbox-nav.next { right: auto; }
 	}
 </style>
