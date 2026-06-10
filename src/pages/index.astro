@@ -387,7 +387,6 @@ if (row.length) rows.push({ items: row, cols: used });
 	const prevBtn = document.getElementById("lightbox-prev") as HTMLButtonElement;
 	const nextBtn = document.getElementById("lightbox-next") as HTMLButtonElement;
 
-	const galleryItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".grid-item"));
 	const photoSrcs = galleryItems.map((item) => item.dataset.full ?? "");
 	let currentIndex = 0;
 
