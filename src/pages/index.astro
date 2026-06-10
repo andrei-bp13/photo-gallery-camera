@@ -7,7 +7,8 @@ const R2_BASE = "https://pub-0d81359dcf6343cba33754dd0dad97fc.r2.dev";
 // All images are served from Cloudflare R2.
 const sized = photosManifest.map(({ name, landscape }) => {
 	const url = `${R2_BASE}/${encodeURIComponent(name)}`;
-	return { src: url, slideSrc: url, fullSrc: url, landscape, name };
+	const thumbUrl = `${R2_BASE}/${encodeURIComponent(name.replace('.webp', '_thumb.webp'))}`;
+	return { src: url, thumbSrc: thumbUrl, slideSrc: url, fullSrc: url, landscape, name };
 });
 
 // Shuffle (Fisher-Yates) so the gallery layout is different on every page load.
@@ -238,7 +239,18 @@ if (row.length) {
 								data-full={photo.fullSrc}
 								data-filename={photo.name}
 							>
-								<img src={photo.src} alt="" loading="lazy" draggable="false" oncontextmenu="return false" ondragstart="return false" />
+								<img
+									src={photo.src}
+									srcset={`${photo.thumbSrc} 600w, ${photo.src} 2400w`}
+									sizes="(max-width: 640px) 50vw, 300px"
+									width={photo.landscape ? 800 : 600}
+									height={photo.landscape ? 450 : 800}
+									alt=""
+									loading="lazy"
+									draggable="false"
+									oncontextmenu="return false"
+									ondragstart="return false"
+								/>
 							</button>
 						))}
 					</div>
@@ -247,9 +259,11 @@ if (row.length) {
 		</main>
 
 		<div class="lightbox" id="lightbox">
-			<button class="lightbox-nav prev" id="lightbox-prev" aria-label="Previous photo"><span>‹</span></button>
 			<img id="lightbox-img" src="" alt="" />
-			<button class="lightbox-nav next" id="lightbox-next" aria-label="Next photo"><span>›</span></button>
+			<div class="lightbox-controls">
+				<button class="lightbox-nav prev" id="lightbox-prev" aria-label="Previous photo"><span>‹</span></button>
+				<button class="lightbox-nav next" id="lightbox-next" aria-label="Next photo"><span>›</span></button>
+			</div>
 		</div>
 	</body>
 </html>
@@ -335,6 +349,7 @@ if (row.length) {
 	function setDieFace(face: number) {
 		const svg = dieBtn.querySelector("svg")!;
 		svg.querySelectorAll("circle").forEach(c => c.remove());
+		const frag = document.createDocumentFragment();
 		DIE_FACES[face].forEach(([cx, cy]) => {
 			const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
 			c.setAttribute("cx", String(cx));
@@ -342,8 +357,9 @@ if (row.length) {
 			c.setAttribute("r", "1.1");
 			c.setAttribute("fill", "currentColor");
 			c.setAttribute("stroke", "none");
-			svg.appendChild(c);
+			frag.appendChild(c);
 		});
+		svg.appendChild(frag);
 	}
 
 	function randomFace() { return Math.floor(Math.random() * 6); }
@@ -693,15 +709,28 @@ if (row.length) {
 			width: 24px;
 			height: 24px;
 		}
+		.lightbox {
+			flex-direction: column;
+			gap: 1.5rem;
+		}
 		.lightbox img {
-			max-width: 78vw;
+			max-width: 95vw;
+			max-height: 75vh;
 		}
-		.lightbox-nav.prev {
-			left: 0.5rem;
+		.lightbox-controls {
+			position: static;
+			pointer-events: all;
+			display: flex;
+			flex-direction: row;
+			gap: 4rem;
+			align-items: center;
 		}
-		.lightbox-nav.next {
-			right: 0.5rem;
+		.lightbox-nav {
+			position: static;
+			transform: none;
 		}
+		.lightbox-nav.prev { left: auto; }
+		.lightbox-nav.next { right: auto; }
 	}
 
 	/* --- Camera + slideshow --- */
@@ -1054,10 +1083,16 @@ if (row.length) {
 		border-radius: 0.5rem;
 		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
 	}
+	.lightbox-controls {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+	}
 	.lightbox-nav {
 		position: absolute;
 		top: 50%;
 		transform: translateY(-50%);
+		pointer-events: all;
 		background: transparent;
 		border: none;
 		color: rgba(255, 255, 255, 0.55);
@@ -1072,12 +1107,11 @@ if (row.length) {
 		font-family: Arial, sans-serif;
 		text-indent: 0;
 		transition: color 0.2s ease;
+		cursor: pointer;
 	}
 	.lightbox-nav span {
 		display: block;
 		transform: translateY(-0.06em);
-		cursor: pointer;
-		z-index: 101;
 	}
 	.lightbox-nav:hover {
 		color: #fff;

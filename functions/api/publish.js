@@ -22,6 +22,7 @@ export async function onRequestPost(ctx) {
   catch { return Response.json({ error: 'Invalid form data' }, { status: 400 }); }
 
   const file = formData.get('file');
+  const thumb = formData.get('thumb');
   const filename = formData.get('filename');
   const landscape = formData.get('landscape') === 'true';
 
@@ -32,10 +33,18 @@ export async function onRequestPost(ctx) {
   const safeName = filename.replace(/[/\\]/g, '').replace(/[^a-zA-Z0-9._\- ]/g, '') || `photo-${Date.now()}.webp`;
   const finalName = safeName.endsWith('.webp') ? safeName : safeName.replace(/\.[^.]+$/, '') + '.webp';
 
-  // Upload to R2
+  // Upload full-size to R2
   await ctx.env.R2.put(finalName, file.stream(), {
     httpMetadata: { contentType: 'image/webp' },
   });
+
+  // Upload thumbnail to R2 (used by srcset for gallery thumbnails)
+  if (thumb) {
+    const thumbName = finalName.replace('.webp', '_thumb.webp');
+    await ctx.env.R2.put(thumbName, thumb.stream(), {
+      httpMetadata: { contentType: 'image/webp' },
+    });
+  }
 
   const url = `${R2_BASE}/${encodeURIComponent(finalName)}`;
   const id = crypto.randomUUID();
