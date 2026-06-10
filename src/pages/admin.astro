@@ -259,22 +259,6 @@
   .photo-item:hover { background: #1a1a1a; }
   .photo-item.selected { border-color: #c9a84c; background: rgba(201,168,76,0.06); }
 
-  .thumb {
-    width: 48px;
-    height: 48px;
-    object-fit: cover;
-    flex-shrink: 0;
-    background: #222;
-    display: block;
-  }
-  .thumb-placeholder {
-    width: 48px; height: 48px;
-    background: #222;
-    flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    color: #444; font-size: 18px;
-  }
-
   .photo-name {
     font-size: 10px;
     letter-spacing: 0.5px;
@@ -479,20 +463,12 @@ function renderList() {
     item.className = 'photo-item' + (selectedPhoto === photo ? ' selected' : '');
     item.dataset.id = photo.id || photo.name;
 
-    const thumb = document.createElement('img');
-    thumb.className = 'thumb';
-    thumb.src = photo.url || photo.previewUrl;
-    thumb.alt = '';
-    thumb.loading = 'lazy';
-    thumb.draggable = false;
-    thumb.onerror = () => { thumb.style.display = 'none'; };
-
     const name = document.createElement('span');
     name.className = 'photo-name';
     name.textContent = photo.filename || photo.name;
     name.title = photo.filename || photo.name;
 
-    item.append(thumb, name);
+    item.append(name);
     item.addEventListener('click', () => selectPhoto(photo));
     photosList.appendChild(item);
   }
@@ -549,9 +525,31 @@ fileInput.addEventListener('change', () => {
   const files = [...fileInput.files];
   if (!files.length) return;
 
+  // Check for name collisions against already-published photos
+  const existingNames = new Set(currentPhotos.map(p => {
+    const base = p.filename.replace(/\.[^.]+$/, '');
+    return base.toLowerCase();
+  }));
+
+  const duplicates = [];
+  const accepted = [];
+  for (const file of files) {
+    const base = file.name.replace(/\.[^.]+$/, '').toLowerCase();
+    if (existingNames.has(base)) {
+      duplicates.push(file.name);
+    } else {
+      accepted.push(file);
+    }
+  }
+
+  if (duplicates.length) {
+    showToast(`Skipped ${duplicates.length} duplicate(s): ${duplicates.join(', ')}`, true);
+  }
+  if (!accepted.length) { fileInput.value = ''; return; }
+
   // Revoke old preview URLs
   newPhotos.forEach(p => URL.revokeObjectURL(p.previewUrl));
-  newPhotos = files.map(file => ({
+  newPhotos = accepted.map(file => ({
     file,
     name: file.name,
     filename: file.name,
@@ -567,7 +565,7 @@ fileInput.addEventListener('change', () => {
   noSelection.style.display = '';
   btnPublish.disabled = false;
   renderList();
-  showToast(`${files.length} file(s) loaded`);
+  showToast(`${accepted.length} file(s) loaded${duplicates.length ? `, ${duplicates.length} duplicate(s) skipped` : ''}`);
 });
 
 // ── Edit Tags ──────────────────────────────────────────────────────────────
