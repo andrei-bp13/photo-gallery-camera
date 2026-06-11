@@ -696,15 +696,46 @@ if (row.length) {
 
 	let currentIndex = 0;
 
-	function show(index: number) {
+	// Lock background scroll while the lightbox is open; compensate for the
+	// scrollbar width so the page behind doesn't shift when it disappears.
+	function lockScroll() {
+		const sw = window.innerWidth - document.documentElement.clientWidth;
+		document.documentElement.style.overflow = "hidden";
+		if (sw > 0) document.documentElement.style.paddingRight = sw + "px";
+	}
+	function unlockScroll() {
+		document.documentElement.style.overflow = "";
+		document.documentElement.style.paddingRight = "";
+	}
+
+	// Warm the browser cache for the neighbouring photos so navigation is instant.
+	function preloadAdjacent() {
+		[currentIndex + 1, currentIndex - 1].forEach((i) => {
+			new Image().src = photoSrcs[(i + photoSrcs.length) % photoSrcs.length];
+		});
+	}
+
+	// direction: +1 = next (new photo slides in from the right), -1 = prev (from
+	// the left), 0 = opening from the gallery (no slide).
+	function show(index: number, direction = 0) {
+		const wasOpen = lightbox.classList.contains("open");
 		currentIndex = (index + photoSrcs.length) % photoSrcs.length;
 		lightboxImg.src = photoSrcs[currentIndex];
 		lightbox.classList.add("open");
+		if (!wasOpen) lockScroll();
+		if (direction !== 0) {
+			lightboxImg.classList.remove("slide-r", "slide-l");
+			void lightboxImg.offsetWidth;   // force reflow so the animation restarts
+			lightboxImg.classList.add(direction > 0 ? "slide-r" : "slide-l");
+		}
+		preloadAdjacent();
 	}
 
 	function close() {
 		lightbox.classList.remove("open");
 		lightboxImg.src = "";
+		lightboxImg.classList.remove("slide-r", "slide-l");
+		unlockScroll();
 	}
 
 	// NOTE: gallery wiring (which triggers the reveal animation) is intentionally
@@ -714,11 +745,11 @@ if (row.length) {
 
 	prevBtn.addEventListener("click", (e) => {
 		e.stopPropagation();
-		show(currentIndex - 1);
+		show(currentIndex - 1, -1);
 	});
 	nextBtn.addEventListener("click", (e) => {
 		e.stopPropagation();
-		show(currentIndex + 1);
+		show(currentIndex + 1, 1);
 	});
 
 	// Tap the backdrop/image to close — unless the tap was actually a swipe.
@@ -741,15 +772,16 @@ if (row.length) {
 		// horizontal swipe past the threshold, and clearly more horizontal than vertical
 		if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) {
 			suppressClick = true;   // don't let the swipe's trailing click close the lightbox
-			show(dx < 0 ? currentIndex + 1 : currentIndex - 1);
+			const dir = dx < 0 ? 1 : -1;
+			show(currentIndex + dir, dir);
 		}
 	}, { passive: true });
 
 	document.addEventListener("keydown", (e) => {
 		if (!lightbox.classList.contains("open")) return;
 		if (e.key === "Escape") close();
-		if (e.key === "ArrowLeft") show(currentIndex - 1);
-		if (e.key === "ArrowRight") show(currentIndex + 1);
+		if (e.key === "ArrowLeft") show(currentIndex - 1, -1);
+		if (e.key === "ArrowRight") show(currentIndex + 1, 1);
 	});
 
 	// Slideshow: blurred -> AF brackets blink (focusing) -> snap sharp -> hold -> fade out
@@ -1422,6 +1454,21 @@ if (row.length) {
 		object-fit: contain;
 		border-radius: 0.5rem;
 		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+	}
+	/* Lightweight slide-in on navigation (GPU-composited transform + opacity). */
+	@keyframes lb-slide-r {
+		from { transform: translateX(40px); opacity: 0; }
+		to   { transform: translateX(0);    opacity: 1; }
+	}
+	@keyframes lb-slide-l {
+		from { transform: translateX(-40px); opacity: 0; }
+		to   { transform: translateX(0);     opacity: 1; }
+	}
+	.lightbox img.slide-r { animation: lb-slide-r 0.2s ease-out; }
+	.lightbox img.slide-l { animation: lb-slide-l 0.2s ease-out; }
+	@media (prefers-reduced-motion: reduce) {
+		.lightbox img.slide-r,
+		.lightbox img.slide-l { animation: none; }
 	}
 	.lightbox-controls {
 		position: absolute;
