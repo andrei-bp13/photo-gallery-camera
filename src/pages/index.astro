@@ -3,6 +3,22 @@ import photosManifest from "../photos-manifest.json";
 
 const R2_BASE = "https://pub-0d81359dcf6343cba33754dd0dad97fc.r2.dev";
 
+// Cloudflare Image Resizing: orbitdust.art has Transformations enabled, so
+// /cdn-cgi/image/<opts>/<source> resizes + re-encodes (AVIF/WebP via format=auto)
+// on the fly and edge-caches the result. Absolute base so it works even if the
+// page is opened on the *.pages.dev URL.
+const SITE_BASE = "https://orbitdust.art";
+const CF_WIDTHS = [400, 600, 900, 1280];
+function cfImg(name: string, w: number) {
+	return `${SITE_BASE}/cdn-cgi/image/width=${w},quality=80,format=auto/${R2_BASE}/${encodeURIComponent(name)}`;
+}
+function cfSrcset(name: string) {
+	return CF_WIDTHS.map((w) => `${cfImg(name, w)} ${w}w`).join(", ");
+}
+// Portrait fills 1 of 4 columns (~25vw mobile / ~285px desktop); landscape fills 2 (~50vw / ~575px).
+const PORTRAIT_SIZES = "(max-width: 640px) 25vw, 285px";
+const LANDSCAPE_SIZES = "(max-width: 640px) 50vw, 575px";
+
 // Load photo list from the committed manifest — no local filesystem access needed.
 // All images are served from Cloudflare R2.
 const sized = photosManifest.map(({ name, landscape }) => {
@@ -285,9 +301,9 @@ if (row.length) {
 							>
 								<img
 									src=""
-									data-src={photo.src}
-									data-srcset={`${photo.thumbSrc} 600w, ${photo.src} 2400w`}
-									sizes="(max-width: 640px) 50vw, 300px"
+									data-src={photo.fullSrc}
+									data-srcset={cfSrcset(photo.name)}
+									sizes={photo.landscape ? LANDSCAPE_SIZES : PORTRAIT_SIZES}
 									width={photo.landscape ? 800 : 600}
 									height={photo.landscape ? 450 : 800}
 									alt=""
@@ -333,6 +349,15 @@ if (row.length) {
 	const R2_BASE = "https://pub-0d81359dcf6343cba33754dd0dad97fc.r2.dev";
 	const r2 = (name: string) => `${R2_BASE}/${encodeURIComponent(name)}`;
 	const r2thumb = (name: string) => `${R2_BASE}/${encodeURIComponent(name.replace('.webp', '_thumb.webp'))}`;
+
+	// Cloudflare Image Resizing (Transformations enabled on orbitdust.art).
+	const SITE_BASE = "https://orbitdust.art";
+	const CF_WIDTHS = [400, 600, 900, 1280];
+	const cfImg = (name: string, w: number) =>
+		`${SITE_BASE}/cdn-cgi/image/width=${w},quality=80,format=auto/${r2(name)}`;
+	const cfSrcset = (name: string) => CF_WIDTHS.map((w) => `${cfImg(name, w)} ${w}w`).join(", ");
+	const PORTRAIT_SIZES = "(max-width: 640px) 25vw, 285px";
+	const LANDSCAPE_SIZES = "(max-width: 640px) 50vw, 575px";
 
 	function clientShuffle<T>(arr: T[]): T[] {
 		const out = [...arr];
@@ -403,8 +428,8 @@ if (row.length) {
 		const img = document.createElement("img");
 		img.src = "";
 		img.dataset.src = r2(photo.name);
-		img.dataset.srcset = `${r2thumb(photo.name)} 600w, ${r2(photo.name)} 2400w`;
-		img.sizes = "(max-width: 640px) 50vw, 300px";
+		img.dataset.srcset = cfSrcset(photo.name);
+		img.sizes = photo.landscape ? LANDSCAPE_SIZES : PORTRAIT_SIZES;
 		img.width = photo.landscape ? 800 : 600;
 		img.height = photo.landscape ? 450 : 800;
 		img.alt = "";
