@@ -899,7 +899,9 @@ if (row.length) {
 	}
 	html, body {
 		margin: 0;
-		overflow-x: hidden;
+		/* clip (not hidden) prevents horizontal scroll without creating a scroll
+		   container, which would break the sticky header below. */
+		overflow-x: clip;
 		scroll-behavior: smooth;
 	}
 	body {
@@ -914,8 +916,9 @@ if (row.length) {
      match the server-rendered elements, breaking dimensions + the slide effect). -->
 <style is:global>
 	.site-header {
-		position: relative;
-		z-index: 10;
+		position: sticky;
+		top: 0;
+		z-index: 50;
 		display: flex;
 		align-items: center;
 		min-height: 64px;
