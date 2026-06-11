@@ -721,7 +721,29 @@ if (row.length) {
 		show(currentIndex + 1);
 	});
 
-	lightbox.addEventListener("click", close);
+	// Tap the backdrop/image to close — unless the tap was actually a swipe.
+	let suppressClick = false;
+	lightbox.addEventListener("click", () => {
+		if (suppressClick) { suppressClick = false; return; }
+		close();
+	});
+
+	// Swipe left/right to navigate on touch devices.
+	let touchStartX = 0, touchStartY = 0;
+	lightbox.addEventListener("touchstart", (e) => {
+		suppressClick = false;
+		touchStartX = e.changedTouches[0].clientX;
+		touchStartY = e.changedTouches[0].clientY;
+	}, { passive: true });
+	lightbox.addEventListener("touchend", (e) => {
+		const dx = e.changedTouches[0].clientX - touchStartX;
+		const dy = e.changedTouches[0].clientY - touchStartY;
+		// horizontal swipe past the threshold, and clearly more horizontal than vertical
+		if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+			suppressClick = true;   // don't let the swipe's trailing click close the lightbox
+			show(dx < 0 ? currentIndex + 1 : currentIndex - 1);
+		}
+	}, { passive: true });
 
 	document.addEventListener("keydown", (e) => {
 		if (!lightbox.classList.contains("open")) return;
@@ -1441,25 +1463,32 @@ if (row.length) {
 		right: 2rem;
 	}
 	@media (max-width: 640px) {
+		/* Reserve space at the bottom for the fixed arrow bar so the (centered)
+		   image never overlaps the buttons — important for tall portraits. */
 		.lightbox {
-			flex-direction: column;
-			gap: 1.5rem;
+			padding-bottom: 5.5rem;
 		}
 		.lightbox img {
 			max-width: 95vw;
-			max-height: 75vh;
+			max-height: calc(100vh - 7.5rem);
+			max-height: calc(100dvh - 7.5rem);
 		}
+		/* Arrows pinned to the bottom of the screen, centered side by side. */
 		.lightbox-controls {
-			position: static;
-			pointer-events: all;
+			position: fixed;
+			top: auto;
+			left: 0;
+			right: 0;
+			bottom: 1.25rem;
 			display: flex;
-			flex-direction: row;
-			gap: 4rem;
-			align-items: center;
+			justify-content: center;
+			gap: 5rem;
+			pointer-events: none;
 		}
 		.lightbox-nav {
 			position: static;
 			transform: none;
+			pointer-events: all;
 		}
 		.lightbox-nav.prev { left: auto; }
 		.lightbox-nav.next { right: auto; }
