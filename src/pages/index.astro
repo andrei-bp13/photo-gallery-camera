@@ -341,7 +341,8 @@ if (row.length) {
 
 	// ── Gallery items ─────────────────────────────────────────────────────────
 	let galleryItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".grid-item"));
-	let photoSrcs: string[] = [];
+	let photoSrcs: string[] = [];     // fullscreen display URLs (Cloudflare-resized)
+	let photoFulls: string[] = [];    // original R2 URLs, used as a fallback
 	const gallerySection = document.querySelector<HTMLElement>(".gallery")!;
 
 	const R2_BASE = "https://pub-0d81359dcf6343cba33754dd0dad97fc.r2.dev";
@@ -441,7 +442,10 @@ if (row.length) {
 	// (Re)bind lazy-load + reveal + lightbox click to the current galleryItems and
 	// rebuild the photoSrcs index. Runs on first load and after a snapshot refresh.
 	function wireGalleryItems() {
-		photoSrcs = galleryItems.map((item) => item.dataset.full ?? "");
+		// Fullscreen shows a Cloudflare-resized 1600px variant (≈80KB vs the ~360KB
+		// original); the original stays as a per-image fallback if a transform fails.
+		photoSrcs = galleryItems.map((item) => cfImg(item.dataset.filename ?? "", 1600));
+		photoFulls = galleryItems.map((item) => item.dataset.full ?? "");
 		galleryItems.forEach((item, i) => {
 			const img = item.querySelector("img");
 			if (img) lazyObs.observe(img);
@@ -691,6 +695,12 @@ if (row.length) {
 	(lightboxImg.style as any).webkitUserSelect = "none";
 	(lightboxImg.style as any).webkitTouchCallout = "none";
 
+	// If the Cloudflare-resized variant fails, fall back to the original R2 image.
+	lightboxImg.addEventListener("error", () => {
+		const full = photoFulls[currentIndex];
+		if (full && lightboxImg.src !== full) lightboxImg.src = full;
+	});
+
 	const prevBtn = document.getElementById("lightbox-prev") as HTMLButtonElement;
 	const nextBtn = document.getElementById("lightbox-next") as HTMLButtonElement;
 
@@ -735,6 +745,9 @@ if (row.length) {
 		lightbox.classList.remove("open");
 		lightboxImg.src = "";
 		lightboxImg.classList.remove("slide-r", "slide-l");
+		lightboxImg.style.transform = "";
+		lightboxImg.style.opacity = "";
+		lightboxImg.style.transition = "";
 		unlockScroll();
 	}
 
@@ -759,21 +772,73 @@ if (row.length) {
 		close();
 	});
 
-	// Swipe left/right to navigate on touch devices.
-	let touchStartX = 0, touchStartY = 0;
+	// Drag-to-navigate: the image tracks the finger; release past 50% of the screen
+	// width commits to the next/prev photo, otherwise it snaps back. Uses only a
+	// GPU-composited transform/opacity, so it stays cheap.
+	let dragStartX = 0, dragStartY = 0, dragDx = 0;
+	let dragging = false, dragHorizontal = false;
+
+	function commitSwipe(dir: number) {
+		const w = window.innerWidth;
+		// finish sliding the current image off in the drag direction, then swap in the neighbour
+		lightboxImg.style.transition = "transform 0.16s ease-out, opacity 0.16s ease-out";
+		lightboxImg.style.transform = `translateX(${dir > 0 ? -w : w}px)`;
+		lightboxImg.style.opacity = "0";
+		const onDone = () => {
+			lightboxImg.removeEventListener("transitionend", onDone);
+			lightboxImg.style.transition = "";
+			lightboxImg.style.transform = "";
+			lightboxImg.style.opacity = "";
+			show(currentIndex + dir, dir);   // sets the new src + plays the slide-in
+		};
+		lightboxImg.addEventListener("transitionend", onDone, { once: true });
+	}
+
 	lightbox.addEventListener("touchstart", (e) => {
+		if (e.touches.length !== 1) return;
 		suppressClick = false;
-		touchStartX = e.changedTouches[0].clientX;
-		touchStartY = e.changedTouches[0].clientY;
+		dragging = true;
+		dragHorizontal = false;
+		dragDx = 0;
+		dragStartX = e.touches[0].clientX;
+		dragStartY = e.touches[0].clientY;
+		lightboxImg.style.transition = "none";   // track the finger 1:1
+		lightboxImg.classList.remove("slide-r", "slide-l");
 	}, { passive: true });
-	lightbox.addEventListener("touchend", (e) => {
-		const dx = e.changedTouches[0].clientX - touchStartX;
-		const dy = e.changedTouches[0].clientY - touchStartY;
-		// horizontal swipe past the threshold, and clearly more horizontal than vertical
-		if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-			suppressClick = true;   // don't let the swipe's trailing click close the lightbox
-			const dir = dx < 0 ? 1 : -1;
-			show(currentIndex + dir, dir);
+
+	lightbox.addEventListener("touchmove", (e) => {
+		if (!dragging) return;
+		const dx = e.touches[0].clientX - dragStartX;
+		const dy = e.touches[0].clientY - dragStartY;
+		if (!dragHorizontal) {
+			if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;      // wait until intent is clear
+			if (Math.abs(dx) <= Math.abs(dy)) {                    // vertical → not a swipe
+				dragging = false;
+				lightboxImg.style.transition = "";
+				return;
+			}
+			dragHorizontal = true;
+		}
+		e.preventDefault();   // horizontal drag: suppress scroll / back-gesture
+		dragDx = dx;
+		const w = window.innerWidth;
+		lightboxImg.style.transform = `translateX(${dx}px)`;
+		lightboxImg.style.opacity = String(Math.max(0.4, 1 - Math.abs(dx) / w));
+	}, { passive: false });
+
+	lightbox.addEventListener("touchend", () => {
+		if (!dragging) return;
+		dragging = false;
+		if (!dragHorizontal) return;
+		suppressClick = true;   // a drag shouldn't also close the lightbox
+		const w = window.innerWidth;
+		if (Math.abs(dragDx) > w * 0.5) {
+			commitSwipe(dragDx < 0 ? 1 : -1);
+		} else {
+			// snap back to center
+			lightboxImg.style.transition = "transform 0.18s ease-out, opacity 0.18s ease-out";
+			lightboxImg.style.transform = "";
+			lightboxImg.style.opacity = "";
 		}
 	}, { passive: true });
 
