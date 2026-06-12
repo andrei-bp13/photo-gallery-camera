@@ -718,11 +718,27 @@ if (row.length) {
 		document.documentElement.style.paddingRight = "";
 	}
 
-	// Warm the browser cache for the neighbouring photos so navigation is instant.
+	// Warm (and pre-decode) the neighbouring photos so navigation is instant.
 	function preloadAdjacent() {
 		[currentIndex + 1, currentIndex - 1].forEach((i) => {
-			new Image().src = photoSrcs[(i + photoSrcs.length) % photoSrcs.length];
+			const im = new Image();
+			im.src = photoSrcs[(i + photoSrcs.length) % photoSrcs.length];
+			im.decode?.().catch(() => {});
 		});
+	}
+
+	// Swap in an already-decoded src and play the slide-in. Done synchronously so
+	// the browser never repaints the previous image at centre during the swap.
+	function applyImage(src: string, direction: number) {
+		lightboxImg.style.transition = "";
+		lightboxImg.style.transform = "";
+		lightboxImg.style.opacity = "";
+		lightboxImg.src = src;
+		if (direction !== 0) {
+			lightboxImg.classList.remove("slide-r", "slide-l");
+			void lightboxImg.offsetWidth;   // force reflow so the animation restarts
+			lightboxImg.classList.add(direction > 0 ? "slide-r" : "slide-l");
+		}
 	}
 
 	// direction: +1 = next (new photo slides in from the right), -1 = prev (from
@@ -730,13 +746,20 @@ if (row.length) {
 	function show(index: number, direction = 0) {
 		const wasOpen = lightbox.classList.contains("open");
 		currentIndex = (index + photoSrcs.length) % photoSrcs.length;
-		lightboxImg.src = photoSrcs[currentIndex];
 		lightbox.classList.add("open");
 		if (!wasOpen) lockScroll();
-		if (direction !== 0) {
-			lightboxImg.classList.remove("slide-r", "slide-l");
-			void lightboxImg.offsetWidth;   // force reflow so the animation restarts
-			lightboxImg.classList.add(direction > 0 ? "slide-r" : "slide-l");
+		const idx = currentIndex;
+		const src = photoSrcs[idx];
+		if (direction === 0) {
+			applyImage(src, 0);   // opening: no previous image to flash
+		} else {
+			// Decode the new image before swapping so the previous one never flickers.
+			const pre = new Image();
+			pre.src = src;
+			const reveal = () => { if (idx === currentIndex) applyImage(src, direction); };
+			const waitLoad = () => { if (pre.complete) reveal(); else { pre.onload = reveal; pre.onerror = reveal; } };
+			if (pre.decode) pre.decode().then(reveal).catch(waitLoad);
+			else waitLoad();
 		}
 		preloadAdjacent();
 	}
@@ -786,10 +809,9 @@ if (row.length) {
 		lightboxImg.style.opacity = "0";
 		const onDone = () => {
 			lightboxImg.removeEventListener("transitionend", onDone);
-			lightboxImg.style.transition = "";
-			lightboxImg.style.transform = "";
-			lightboxImg.style.opacity = "";
-			show(currentIndex + dir, dir);   // sets the new src + plays the slide-in
+			// Leave the (now off-screen, opacity 0) old image as-is; show() decodes the
+			// new image then swaps it in via applyImage, so the old one never reappears.
+			show(currentIndex + dir, dir);
 		};
 		lightboxImg.addEventListener("transitionend", onDone, { once: true });
 	}
@@ -1522,12 +1544,12 @@ if (row.length) {
 	}
 	/* Lightweight slide-in on navigation (GPU-composited transform + opacity). */
 	@keyframes lb-slide-r {
-		from { transform: translateX(40px); opacity: 0; }
-		to   { transform: translateX(0);    opacity: 1; }
+		from { transform: translateX(40px); }
+		to   { transform: translateX(0); }
 	}
 	@keyframes lb-slide-l {
-		from { transform: translateX(-40px); opacity: 0; }
-		to   { transform: translateX(0);     opacity: 1; }
+		from { transform: translateX(-40px); }
+		to   { transform: translateX(0); }
 	}
 	.lightbox img.slide-r { animation: lb-slide-r 0.2s ease-out; }
 	.lightbox img.slide-l { animation: lb-slide-l 0.2s ease-out; }
