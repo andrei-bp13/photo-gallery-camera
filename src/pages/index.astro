@@ -700,7 +700,12 @@ if (row.length) {
 	(lightboxImg.style as any).webkitTouchCallout = "none";
 
 	// If the Cloudflare-resized variant fails, fall back to the original R2 image.
+	// Ignore the deliberate src="" on close (and never act while closed), otherwise
+	// it would reload the previous photo and flash it on the next open.
 	lightboxImg.addEventListener("error", () => {
+		if (!lightbox.classList.contains("open")) return;
+		const cur = lightboxImg.getAttribute("src") || "";
+		if (!cur.startsWith("http")) return;
 		const full = photoFulls[currentIndex];
 		if (full && lightboxImg.src !== full) lightboxImg.src = full;
 	});
@@ -755,17 +760,14 @@ if (row.length) {
 		if (!wasOpen) lockScroll();
 		const idx = currentIndex;
 		const src = photoSrcs[idx];
-		if (direction === 0) {
-			applyImage(src, 0);   // opening: no previous image to flash
-		} else {
-			// Decode the new image before swapping so the previous one never flickers.
-			const pre = new Image();
-			pre.src = src;
-			const reveal = () => { if (idx === currentIndex) applyImage(src, direction); };
-			const waitLoad = () => { if (pre.complete) reveal(); else { pre.onload = reveal; pre.onerror = reveal; } };
-			if (pre.decode) pre.decode().then(reveal).catch(waitLoad);
-			else waitLoad();
-		}
+		// Decode the new image before showing it, so neither the previous photo nor a
+		// blank frame is ever displayed during the swap (open and navigate alike).
+		const pre = new Image();
+		pre.src = src;
+		const reveal = () => { if (idx === currentIndex) applyImage(src, direction); };
+		const waitLoad = () => { if (pre.complete) reveal(); else { pre.onload = reveal; pre.onerror = reveal; } };
+		if (pre.decode) pre.decode().then(reveal).catch(waitLoad);
+		else waitLoad();
 		preloadAdjacent();
 	}
 
@@ -815,13 +817,11 @@ if (row.length) {
 		enhanceOverlay.style.height = r.height + "px";
 	}
 
-	// Sharpest resolution worth loading for this screen: device pixels across,
-	// never below the 1600px display, never above the 2400px source. Routed through
-	// Cloudflare so even the max is a light AVIF rather than the raw original.
+	// Biggest resolution the source offers (2400px), re-encoded to a light AVIF by
+	// Cloudflare. (An earlier screen-width cap was dropped: on phones the 1600px
+	// display already exceeds the screen, so the cap made the button a no-op.)
 	function enhanceSrc(name: string) {
-		const dpr = Math.min(window.devicePixelRatio || 1, 3);
-		const target = Math.min(2400, Math.max(1600, Math.round(window.innerWidth * dpr)));
-		return cfImg(name, target);
+		return cfImg(name, 2400);
 	}
 
 	enhanceBtn.addEventListener("click", (e) => {
@@ -1624,7 +1624,9 @@ if (row.length) {
 		cursor: pointer;
 		transition: background 0.2s ease, color 0.2s ease;
 	}
-	.enhance-btn:hover { background: #c9a84c; color: #111111; }
+	@media (hover: hover) {
+		.enhance-btn:hover { background: #c9a84c; color: #111111; }
+	}
 	.lightbox.enhancing .enhance-btn { opacity: 0.4; pointer-events: none; }
 
 	/* Loading overlay text, positioned over the photo (its box is sized in JS).
