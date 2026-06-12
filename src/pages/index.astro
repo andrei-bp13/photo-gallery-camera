@@ -345,6 +345,7 @@ if (row.length) {
 	let galleryItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".grid-item"));
 	let photoSrcs: string[] = [];     // fullscreen display URLs (Cloudflare-resized)
 	let photoFulls: string[] = [];    // original R2 URLs, used as a fallback
+	let photoNames: string[] = [];    // filenames, used to build the "enhance" URL
 	const gallerySection = document.querySelector<HTMLElement>(".gallery")!;
 
 	const R2_BASE = "https://pub-0d81359dcf6343cba33754dd0dad97fc.r2.dev";
@@ -448,6 +449,7 @@ if (row.length) {
 		// original); the original stays as a per-image fallback if a transform fails.
 		photoSrcs = galleryItems.map((item) => cfImg(item.dataset.filename ?? "", 1600));
 		photoFulls = galleryItems.map((item) => item.dataset.full ?? "");
+		photoNames = galleryItems.map((item) => item.dataset.filename ?? "");
 		galleryItems.forEach((item, i) => {
 			const img = item.querySelector("img");
 			if (img) lazyObs.observe(img);
@@ -813,11 +815,21 @@ if (row.length) {
 		enhanceOverlay.style.height = r.height + "px";
 	}
 
+	// Sharpest resolution worth loading for this screen: device pixels across,
+	// never below the 1600px display, never above the 2400px source. Routed through
+	// Cloudflare so even the max is a light AVIF rather than the raw original.
+	function enhanceSrc(name: string) {
+		const dpr = Math.min(window.devicePixelRatio || 1, 3);
+		const target = Math.min(2400, Math.max(1600, Math.round(window.innerWidth * dpr)));
+		return cfImg(name, target);
+	}
+
 	enhanceBtn.addEventListener("click", (e) => {
 		e.stopPropagation();
 		const idx = currentIndex;
-		const full = photoFulls[idx];
-		if (!full || lightboxImg.src === full) return;   // no original, or already at full res
+		const name = photoNames[idx];
+		const full = name ? enhanceSrc(name) : "";
+		if (!full || lightboxImg.src === full) return;   // nothing bigger to load for this screen
 		enhanceText.textContent = ENHANCE_MSGS[Math.floor(Math.random() * ENHANCE_MSGS.length)];
 		positionEnhanceOverlay();
 		lightbox.classList.add("enhancing");             // blur the current photo + show message
@@ -1581,7 +1593,7 @@ if (row.length) {
 	}
 	.lightbox img {
 		max-width: 92vw;
-		max-height: 86vh;   /* leaves room for the enhance button below the photo */
+		max-height: 82vh;   /* leaves comfortable room for the enhance button below */
 		object-fit: contain;
 		border-radius: 0.5rem;
 		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
@@ -1596,7 +1608,7 @@ if (row.length) {
 	.enhance-btn {
 		position: absolute;
 		left: 50%;
-		bottom: 3vh;
+		bottom: 4vh;
 		transform: translateX(-50%);
 		pointer-events: all;
 		background: transparent;
