@@ -760,14 +760,33 @@ if (row.length) {
 		if (!wasOpen) lockScroll();
 		const idx = currentIndex;
 		const src = photoSrcs[idx];
-		// Decode the new image before showing it, so neither the previous photo nor a
-		// blank frame is ever displayed during the swap (open and navigate alike).
-		const pre = new Image();
-		pre.src = src;
-		const reveal = () => { if (idx === currentIndex) applyImage(src, direction); };
-		const waitLoad = () => { if (pre.complete) reveal(); else { pre.onload = reveal; pre.onerror = reveal; } };
-		if (pre.decode) pre.decode().then(reveal).catch(waitLoad);
-		else waitLoad();
+
+		if (direction === 0) {
+			// Opening: show the gallery's already-loaded thumbnail instantly (no blank
+			// wait while the full AVIF downloads), then quietly upgrade to the full
+			// display image once it's decoded. Setting this photo's thumb right away
+			// also means the previous photo is never shown.
+			const thumb = galleryItems[idx]?.querySelector("img")?.currentSrc || "";
+			applyImage(thumb || src, 0);
+			if (thumb && thumb !== src) {
+				const pre = new Image();
+				pre.src = src;
+				const upgrade = () => {
+					if (idx === currentIndex && lightbox.classList.contains("open")) lightboxImg.src = src;
+				};
+				if (pre.decode) pre.decode().then(upgrade).catch(() => { pre.onload = upgrade; });
+				else pre.onload = upgrade;
+			}
+		} else {
+			// Navigating: neighbours are preloaded, so decode first to avoid any flash
+			// of the previous photo during the swap.
+			const pre = new Image();
+			pre.src = src;
+			const reveal = () => { if (idx === currentIndex) applyImage(src, direction); };
+			const waitLoad = () => { if (pre.complete) reveal(); else { pre.onload = reveal; pre.onerror = reveal; } };
+			if (pre.decode) pre.decode().then(reveal).catch(waitLoad);
+			else waitLoad();
+		}
 		preloadAdjacent();
 	}
 
