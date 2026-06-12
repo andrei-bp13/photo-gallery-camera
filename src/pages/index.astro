@@ -319,8 +319,10 @@ if (row.length) {
 
 		<div class="lightbox" id="lightbox">
 			<img id="lightbox-img" src="" alt="" />
+			<div class="enhance-overlay" id="enhance-overlay"><span class="enhance-text" id="enhance-text"></span></div>
 			<div class="lightbox-controls">
 				<button class="lightbox-nav prev" id="lightbox-prev" aria-label="Previous photo"><span>‹</span></button>
+				<button class="enhance-btn" id="lightbox-enhance" type="button">enhance</button>
 				<button class="lightbox-nav next" id="lightbox-next" aria-label="Next photo"><span>›</span></button>
 			</div>
 		</div>
@@ -747,6 +749,7 @@ if (row.length) {
 		const wasOpen = lightbox.classList.contains("open");
 		currentIndex = (index + photoSrcs.length) % photoSrcs.length;
 		lightbox.classList.add("open");
+		lightbox.classList.remove("enhancing");   // changing photo cancels any enhance
 		if (!wasOpen) lockScroll();
 		const idx = currentIndex;
 		const src = photoSrcs[idx];
@@ -766,6 +769,7 @@ if (row.length) {
 
 	function close() {
 		lightbox.classList.remove("open");
+		lightbox.classList.remove("enhancing");
 		lightboxImg.src = "";
 		lightboxImg.classList.remove("slide-r", "slide-l");
 		lightboxImg.style.transform = "";
@@ -786,6 +790,46 @@ if (row.length) {
 	nextBtn.addEventListener("click", (e) => {
 		e.stopPropagation();
 		show(currentIndex + 1, 1);
+	});
+
+	// ── "Enhance": load the full-resolution original, with a blur + loading message ──
+	const enhanceBtn = document.getElementById("lightbox-enhance") as HTMLButtonElement;
+	const enhanceOverlay = document.getElementById("enhance-overlay") as HTMLElement;
+	const enhanceText = document.getElementById("enhance-text") as HTMLElement;
+	const ENHANCE_MSGS = [
+		"downloading RAM...",
+		"going quantum...",
+		"engaging warp drive...",
+		"yelling at hamsters...",
+		"starting AI revolution...",
+	];
+
+	// Size the overlay to the photo's rendered box so the text stays within the picture.
+	function positionEnhanceOverlay() {
+		const r = lightboxImg.getBoundingClientRect();
+		enhanceOverlay.style.left = r.left + "px";
+		enhanceOverlay.style.top = r.top + "px";
+		enhanceOverlay.style.width = r.width + "px";
+		enhanceOverlay.style.height = r.height + "px";
+	}
+
+	enhanceBtn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		const idx = currentIndex;
+		const full = photoFulls[idx];
+		if (!full || lightboxImg.src === full) return;   // no original, or already at full res
+		enhanceText.textContent = ENHANCE_MSGS[Math.floor(Math.random() * ENHANCE_MSGS.length)];
+		positionEnhanceOverlay();
+		lightbox.classList.add("enhancing");             // blur the current photo + show message
+		const pre = new Image();
+		pre.src = full;
+		const done = () => {
+			if (idx !== currentIndex) { lightbox.classList.remove("enhancing"); return; }
+			lightboxImg.src = full;                       // swap to full res (still blurred)…
+			lightbox.classList.remove("enhancing");       // …then blur + text fade out, revealing it sharp
+		};
+		if (pre.decode) pre.decode().then(done).catch(() => { if (pre.complete) done(); else { pre.onload = done; pre.onerror = done; } });
+		else { pre.onload = done; pre.onerror = done; if (pre.complete) done(); }
 	});
 
 	// Tap the backdrop/image to close — unless the tap was actually a swipe.
@@ -1537,11 +1581,67 @@ if (row.length) {
 	}
 	.lightbox img {
 		max-width: 92vw;
-		max-height: 92vh;
+		max-height: 86vh;   /* leaves room for the enhance button below the photo */
 		object-fit: contain;
 		border-radius: 0.5rem;
 		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+		transition: filter 0.35s ease;
 	}
+	/* While enhancing: blur the displayed (lower-res) photo until the full one loads. */
+	.lightbox.enhancing #lightbox-img {
+		filter: blur(14px);
+	}
+
+	/* "enhance" button — bottom-centre on desktop, in the arrow bar on mobile. */
+	.enhance-btn {
+		position: absolute;
+		left: 50%;
+		bottom: 3vh;
+		transform: translateX(-50%);
+		pointer-events: all;
+		background: transparent;
+		border: 1px solid #c9a84c;
+		color: #c9a84c;
+		font-family: "Orbitron", sans-serif;
+		font-weight: 700;
+		font-size: 0.8rem;
+		letter-spacing: 0.22em;
+		text-transform: lowercase;
+		padding: 0.5rem 1.5rem;
+		border-radius: 2px;
+		cursor: pointer;
+		transition: background 0.2s ease, color 0.2s ease;
+	}
+	.enhance-btn:hover { background: #c9a84c; color: #111111; }
+	.lightbox.enhancing .enhance-btn { opacity: 0.4; pointer-events: none; }
+
+	/* Loading overlay text, positioned over the photo (its box is sized in JS).
+	   Fades together with the blur via opacity. */
+	.enhance-overlay {
+		position: fixed;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 1rem;
+		pointer-events: none;
+		z-index: 102;
+		opacity: 0;
+		visibility: hidden;
+		transition: opacity 0.35s ease, visibility 0.35s ease;
+	}
+	.lightbox.enhancing .enhance-overlay { opacity: 1; visibility: visible; }
+	.enhance-text {
+		font-family: "Orbitron", sans-serif;
+		font-weight: 700;
+		color: #c9a84c;
+		text-align: center;
+		max-width: 100%;
+		font-size: clamp(1.1rem, 4.5vw, 2.4rem);
+		letter-spacing: 0.04em;
+		line-height: 1.3;
+		text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7);
+	}
+
 	/* Lightweight slide-in on navigation (GPU-composited transform + opacity). */
 	@keyframes lb-slide-r {
 		from { transform: translateX(40px); }
@@ -1607,7 +1707,8 @@ if (row.length) {
 			max-height: calc(100vh - 7.5rem);
 			max-height: calc(100dvh - 7.5rem);
 		}
-		/* Arrows pinned to the bottom of the screen, centered side by side. */
+		/* Arrows + enhance button pinned to the bottom: < [gap] enhance [gap] >,
+		   with roughly a button's width of space between each. */
 		.lightbox-controls {
 			position: fixed;
 			top: auto;
@@ -1616,15 +1717,27 @@ if (row.length) {
 			bottom: 1.25rem;
 			display: flex;
 			justify-content: center;
-			gap: 5rem;
+			align-items: center;
+			gap: 3rem;
 			pointer-events: none;
 		}
 		.lightbox-nav {
 			position: static;
 			transform: none;
 			pointer-events: all;
+			flex-shrink: 0;
 		}
 		.lightbox-nav.prev { left: auto; }
 		.lightbox-nav.next { right: auto; }
+		.enhance-btn {
+			position: static;
+			transform: none;
+			left: auto;
+			bottom: auto;
+			flex-shrink: 0;
+			font-size: 0.7rem;
+			letter-spacing: 0.16em;
+			padding: 0.45rem 0.9rem;
+		}
 	}
 </style>
