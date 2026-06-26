@@ -907,7 +907,7 @@ if (row.length) {
 		if (!dragHorizontal) return;
 		suppressClick = true;   // a drag shouldn't also close the lightbox
 		const w = window.innerWidth;
-		if (Math.abs(dragDx) > w * 0.4) {
+		if (Math.abs(dragDx) > w * 0.33) {
 			commitSwipe(dragDx < 0 ? 1 : -1);
 		} else {
 			// snap back to center
